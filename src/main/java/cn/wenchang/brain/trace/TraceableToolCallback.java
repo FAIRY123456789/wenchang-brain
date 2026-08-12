@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * 为任意 Native 或 MCP ToolCallback 增加一致的 Trace 行为。
@@ -51,12 +53,15 @@ public final class TraceableToolCallback implements ToolCallback {
 
     private String tracedCall(String input, ToolContext context) {
         String traceId = traceId(context);
+        String effectiveInput = source.equals("MCP") && isArtifactTool()
+                ? authoritativeMcpInput(input, context) : input;
         long started = System.nanoTime();
         String output = "";
         String status = "SUCCESS";
         String errorType = "";
         try {
-            output = context == null ? delegate.call(input) : delegate.call(input, context);
+            output = context == null ? delegate.call(effectiveInput) : delegate.call(effectiveInput, context);
+            if (source.equals("MCP")) ToolTraceCollector.recordArtifactOutput(traceId, output);
             Failure failure = classifyOutput(output);
             status = failure.failed() ? "FAILED" : "SUCCESS";
             errorType = failure.errorType();
@@ -69,8 +74,31 @@ public final class TraceableToolCallback implements ToolCallback {
         } finally {
             long latencyMs = (System.nanoTime() - started) / 1_000_000;
             ToolTraceCollector.record(traceId, new ToolCallTrace(traceId, getToolDefinition().name(),
-                    source, stage(context), truncate(input), status, errorType, truncate(output), latencyMs));
+                    source, stage(context), truncate(effectiveInput), status, errorType, truncate(output), latencyMs));
         }
+    }
+
+    private String authoritativeMcpInput(String input, ToolContext context) {
+        if (context == null || context.getContext() == null) return input;
+        try {
+            ObjectNode root = (ObjectNode) new ObjectMapper().readTree(input == null || input.isBlank() ? "{}" : input);
+            putContext(root, "conversationId", context, ToolTraceCollector.CONVERSATION_ID_CONTEXT_KEY);
+            putContext(root, "createdByAgent", context, ToolTraceCollector.AGENT_ID_CONTEXT_KEY);
+            putContext(root, "skillId", context, ToolTraceCollector.SKILL_ID_CONTEXT_KEY);
+            return root.toString();
+        } catch (Exception ignored) {
+            return input;
+        }
+    }
+
+    private boolean isArtifactTool() {
+        return getToolDefinition().name().matches(
+                "createWenchangWordReport|exportWenchangData|createStudyTourPackage|createPolicyBrief");
+    }
+
+    private void putContext(ObjectNode root, String field, ToolContext context, String key) {
+        Object value = context.getContext().get(key);
+        if (value != null && !String.valueOf(value).isBlank()) root.put(field, String.valueOf(value));
     }
 
     private String stage(ToolContext context) {

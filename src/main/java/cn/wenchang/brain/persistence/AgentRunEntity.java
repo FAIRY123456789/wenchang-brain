@@ -42,6 +42,9 @@ public class AgentRunEntity {
 
     private Instant completedAt;
 
+    @Lob
+    private String artifactsJson;
+
     @OneToMany(mappedBy = "agentRun", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("sequence ASC, id ASC")
     private List<AgentStepEntity> steps = new ArrayList<>();
@@ -67,6 +70,7 @@ public class AgentRunEntity {
     public String getStatus() { return status; }
     public Instant getStartedAt() { return startedAt; }
     public Instant getCompletedAt() { return completedAt; }
+    public String getArtifactsJson() { return artifactsJson; }
     public List<AgentStepEntity> getSteps() { return steps; }
 
     public void addStep(AgentStepEntity step) { steps.add(step); }
@@ -74,4 +78,5 @@ public class AgentRunEntity {
         this.status = status;
         this.completedAt = completedAt;
     }
+    public void attachArtifacts(String artifactsJson) { this.artifactsJson = artifactsJson; }
 }

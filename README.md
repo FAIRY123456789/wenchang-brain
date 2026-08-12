@@ -86,6 +86,10 @@ MCP Tool：
 
 主应用提供 `GET /api/artifacts`、`GET /api/artifacts/{id}`、`GET /api/artifacts/{id}/download`、`DELETE /api/artifacts/{id}`。下载使用 UTF-8 文件名，文件路径经过 normalize、root 边界与 real path 检查。ChatResponse 与 Message 持久化 Artifact metadata，历史会话恢复后文件卡仍存在。
 
+### Artifact Output
+
+Agent 可以生成 Word、Excel 与 CSV。文件生成成功后，统一的 `ArtifactDescriptor` 会进入 Chat Response、SSE `complete`、Agent Run 与 Message 持久化，聊天正文下方立即显示可点击的文件卡；刷新会话或重启服务后仍可下载。公网部署通过统一 Base Path 生成 `/wenchang-brain/api/artifacts/{id}/download`，文件保存在独立于 Release 的持久目录。
+
 ## MCP Architecture
 
 `extensions/wenchang-public-resource-mcp` 是独立 Spring AI Streamable HTTP Server，默认运行于 `127.0.0.1:8091/mcp`。前三个工具提供公共服务、乡镇画像和研学地点查询；四个生产工具生成 Word、CSV/XLSX、研学方案和政策简报。主应用通过 Spring AI MCP Client 动态 `tools/list`，MCP 断开不会被误报为联网搜索故障。

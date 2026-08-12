@@ -13,4 +13,10 @@ public record ArtifactMetadata(
         long size,
         String relativePath,
         String downloadUrl
-) { }
+) {
+    public ArtifactDescriptor descriptor() {
+        String displayName = filename == null ? "" : filename.replaceFirst("\\.[^.]+$", "");
+        return new ArtifactDescriptor(id, conversationId, type, filename, displayName, contentType, size,
+                createdAt, downloadUrl, false, sourceCount, createdByAgent, skillId);
+    }
+}

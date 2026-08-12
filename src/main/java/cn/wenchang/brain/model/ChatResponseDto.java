@@ -1,6 +1,6 @@
 package cn.wenchang.brain.model;
 
-import cn.wenchang.brain.artifact.ArtifactMetadata;
+import cn.wenchang.brain.artifact.ArtifactDescriptor;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ public record ChatResponseDto(
         String agentId,
         String skillId,
         AgentRunSummary agentRun,
-        List<ArtifactMetadata> artifacts
+        List<ArtifactDescriptor> artifacts
 ) {
     public ChatResponseDto {
         artifacts = artifacts == null ? List.of() : List.copyOf(artifacts);

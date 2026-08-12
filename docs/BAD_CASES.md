@@ -219,3 +219,18 @@
 - 根因：按钮处理器先重绘了 Context DOM，原按钮随即脱离文档；同一次点击继续冒泡到 document 时，旧的 `event.target.closest()` 已无法判断它来自 Command Bar，于是被误判为外部点击并关闭选择器。
 - 修复：外部点击判断改用本次事件稳定的 `event.composedPath()`，检查路径是否包含 Command Bar；即使 Context 在处理过程中重绘，也不会丢失事件来源。
 - 回归：PASS。浏览器实测 Policy Assistant + `/政策简报` 进入 `AGENT_AND_SKILL_SELECTED`，两个 Context 同时存在，未创建空会话。
+
+## 30. Artifact successfully created but download entry missing
+
+- 问题：模型正文明确声称 Word 已生成，但回答下方没有文件卡、下载按钮或可点击链接。
+- 实际链路：MCP 已生成文件；模型却给 Artifact Tool 传入语义化 `conversationId`，与主应用真实会话 UUID 不同。文件落在错误目录，主应用按真实会话查询时得到空数组。Spring AI MCP 响应又是嵌套 content 包装，旧采集器未能取得 artifactId，因此 Chat Response、SSE、Message 与 UI 同时丢失。
+- 修复：仅对 4 个 Artifact MCP Tool 使用服务端 `ToolContext` 强制覆盖 conversationId/Agent/Skill；递归解析 MCP 包装结果并收集 artifactId；按 ID 构造统一 ArtifactDescriptor；贯通 AgentRun、AgentStep、Chat Response、SSE、Message 与前端卡片。
+- 防伪规则：只有 Registry 中存在可下载 Artifact 才允许保留“已生成”措辞；失败时正文改为明确的文件成果未完成。
+- 回归：本地 Word/XLSX/CSV 与公网 Word 均返回结构化 Artifact。公网下载 200，Content-Length 与文件一致，UTF-8 中文文件名正确；刷新和 systemd 重启后仍可下载。
+
+## 31. MCP 查询工具被注入 Artifact 上下文字段
+
+- 问题：上线后的第一次 `/公共服务` + Word 验收中，`searchPublicServices` 报严格 schema 不允许 `conversationId / createdByAgent / skillId`，查询失败且无文件。
+- 原因：Artifact 会话归属修复最初按 `toolSource=MCP` 统一注入字段，没有区分查询型 Tool 和成果型 Tool。
+- 修复：上下文覆盖只作用于 `createWenchangWordReport / exportWenchangData / createStudyTourPackage / createPolicyBrief`；查询 Tool 输入保持原始 schema。明确文件意图由编排器确定性追加成果 Tool。
+- 回归：新增查询输入不变测试与 Skill Artifact 路由测试；生产真实调用工具序列为 `searchPublicServices, createWenchangWordReport`，Agent Run `COMPLETED`，文件数 1。

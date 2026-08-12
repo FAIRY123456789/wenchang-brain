@@ -3,6 +3,7 @@ package cn.wenchang.brain.controller;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import cn.wenchang.brain.artifact.ArtifactDescriptor;
 import cn.wenchang.brain.artifact.ArtifactMetadata;
 import cn.wenchang.brain.artifact.ArtifactService;
 import org.springframework.core.io.FileSystemResource;
@@ -27,12 +28,12 @@ public class ArtifactController {
     public ArtifactController(ArtifactService artifactService) { this.artifactService = artifactService; }
 
     @GetMapping
-    public List<ArtifactMetadata> list(@RequestParam(required = false) String conversationId) {
-        return artifactService.list(conversationId);
+    public List<ArtifactDescriptor> list(@RequestParam(required = false) String conversationId) {
+        return artifactService.listDescriptors(conversationId);
     }
 
     @GetMapping("/{id}")
-    public ArtifactMetadata detail(@PathVariable String id) { return artifactService.require(id); }
+    public ArtifactDescriptor detail(@PathVariable String id) { return artifactService.require(id).descriptor(); }
 
     @GetMapping("/{id}/download")
     public ResponseEntity<FileSystemResource> download(@PathVariable String id) {

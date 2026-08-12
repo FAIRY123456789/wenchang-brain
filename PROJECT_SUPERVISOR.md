@@ -1,5 +1,16 @@
 # PROJECT SUPERVISOR
 
+## 2026-08-12 · Artifact Download Closure
+
+- Root Cause：DeepSeek 自主调用 Artifact MCP Tool 时可在 JSON 参数中生成语义化 `conversationId`；主应用只在 `ToolContext` 保存真实会话 UUID，远端 MCP 实际收到的仍是模型参数，因此文件写入错误会话目录。主应用随后按真实 UUID 查询为空，导致 Chat Response、SSE、Message 与前端文件卡全部缺失。
+- 第二个实际问题：Spring AI MCP Callback 返回包装后的 content 数组而不是裸 Artifact JSON，首版采集器无法从嵌套文本取得 `artifactId`。修复为递归解析 MCP 包装层并按 ID 精确回查 manifest。
+- 生产复测额外发现：权威上下文曾被注入所有 MCP Tool，查询型 `searchPublicServices` 的严格 schema 拒绝额外字段。现仅 4 个 Artifact Tool 覆盖 `conversationId / createdByAgent / skillId`；查询工具保持声明 schema。用户明确要求 Word/Excel/CSV 时，成果 Tool 进入确定性执行计划，不再依赖模型二次选择。
+- 统一结构：新增 `ArtifactDescriptor`，覆盖 id、conversationId、type、filename、displayName、mimeType、sizeBytes、createdAt、downloadUrl、previewAvailable、sourceCount、createdByAgent、skillId。
+- 传输与持久化：Chat Response 与 SSE `complete` 返回 `artifacts[]`；Message 保存 `artifactsJson`；AgentRun 保存 `artifactsJson`；AgentStep 保存 `artifactIdsJson`。若工具声称创建文件但 Registry 无 Artifact，系统会删除成功措辞并显示明确失败。
+- 前端：回答下方显示 Word/Excel/CSV 文件卡、大小、来源数、打开和下载按钮；Agent Run 摘要显示文件数并列出成果；刷新时从 Message 与 Artifact API 恢复。所有 URL 经 `APP_BASE_PATH` 适配。
+- 测试：主应用 80/80 PASS，MCP 7/7 PASS；本地 Word/XLSX/CSV 真实生成与下载通过，Word 可解包且中文/来源正常；390×844 无横向溢出。
+- 生产：Release `1.5.0-artifact-fix2-20260812` 已部署到阿里云。真实任务调用 `searchPublicServices → createWenchangWordReport`，Artifact `6dabc2ff-ce51-44cf-9e4e-cb8626302f12` 写入真实会话 UUID 目录，公网下载 HTTP 200。`systemctl restart wenchang-brain` 后会话、Agent Run、Artifact 与下载仍恢复。
+
 ## 2026-08-10 · 第一轮从零建设
 
 - 本轮目标：完成 Markdown → Document → Chunk → Embedding → SimpleVectorStore → RAG → ChatClient → Web UI → Source，并加入 WebSearchTool、Memory、Trace、Eval。

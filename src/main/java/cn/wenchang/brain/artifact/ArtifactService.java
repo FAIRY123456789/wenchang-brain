@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -43,6 +44,18 @@ public class ArtifactService {
         catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "文件列表读取失败", exception);
         }
+    }
+
+    public List<ArtifactDescriptor> listDescriptors(String conversationId) {
+        return list(conversationId).stream().map(ArtifactMetadata::descriptor).toList();
+    }
+
+    public List<ArtifactDescriptor> descriptorsByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        var requested = new LinkedHashSet<>(ids);
+        return list(null).stream().filter(item -> requested.contains(item.id()))
+                .sorted(Comparator.comparingInt(item -> ids.indexOf(item.id())))
+                .map(ArtifactMetadata::descriptor).toList();
     }
 
     public ArtifactMetadata require(String id) {

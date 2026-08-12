@@ -5,5 +5,6 @@ import java.util.List;
 
 public record PersistedAgentRun(
         String id, String conversationId, String agentId, String skillId, String goal,
-        String status, Instant startedAt, Instant completedAt, List<PersistedAgentStep> steps
+        String status, Instant startedAt, Instant completedAt, List<PersistedAgentStep> steps,
+        String artifactsJson
 ) { }

@@ -6,6 +6,7 @@ import cn.wenchang.brain.model.AgentRunSummary;
 import cn.wenchang.brain.model.ChatResponseDto;
 import cn.wenchang.brain.model.ConversationDetail;
 import cn.wenchang.brain.model.SourceRef;
+import cn.wenchang.brain.artifact.ArtifactDescriptor;
 import cn.wenchang.brain.service.ConversationMemoryService;
 import cn.wenchang.brain.service.ConversationService;
 import cn.wenchang.brain.service.WenchangAgentService;
@@ -90,6 +91,32 @@ class AgentRunPersistenceContractTest {
         assertThat(restored.messages().get(1).toolsUsedJson()).contains("knowledgeEvidence");
         assertThat(restored.messages().get(1).sourcesJson()).isNotBlank().isNotEqualTo("[]");
         assertThat(memoryService.restoredMessageCount(conversation.id())).isEqualTo(2);
+    }
+
+    @Test
+    void persistedConversationRestoresArtifactDescriptorAndAgentRunOutput() {
+        var conversation = conversationService.resolveForChat(null, "生成高中名单 Word", "wenchang");
+        conversationService.appendUser(conversation.id(), "生成高中名单 Word");
+        ArtifactDescriptor artifact = new ArtifactDescriptor("artifact-restore", conversation.id(), "WORD",
+                "文昌市高中名单报告.docx", "文昌市高中名单报告",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 2048,
+                "2026-08-12T00:00:00Z", "/api/artifacts/artifact-restore/download", false, 6,
+                "wenchang", "word-report");
+        AgentRunStep fileStep = new AgentRunStep("word", "生成 Word 报告", "tool",
+                "createWenchangWordReport", "completed", 40, 6, "MCP", "文件已生成",
+                null, null, "{}", List.of(artifact.id()));
+        AgentRunSummary run = new AgentRunSummary("wenchang", "Wenchang Assistant", "word-report", "生成 Word",
+                List.of(fileStep), 1, 6, 50, "run-artifact", "COMPLETED", null, null, List.of(artifact));
+        ChatResponseDto response = new ChatResponseDto("报告已生成，见下方文件。", List.of(),
+                List.of("createWenchangWordReport"), "trace-artifact", 50, "REMOTE_DEFAULT", "deepseek",
+                "deepseek-chat", conversation.id(), "wenchang", "word-report", run, List.of(artifact));
+        conversationService.appendAssistant(conversation.id(), response);
+
+        ConversationDetail restored = conversationService.detail(conversation.id());
+        assertThat(restored.messages()).hasSize(2);
+        assertThat(restored.messages().get(1).artifactsJson()).contains(
+                "artifact-restore", "文昌市高中名单报告.docx", "downloadUrl");
+        assertThat(restored.messages().get(1).agentRunJson()).contains("artifact-restore", "artifactIds");
     }
 
     private static int indexOf(List<AgentRunEvent> events, String type) {

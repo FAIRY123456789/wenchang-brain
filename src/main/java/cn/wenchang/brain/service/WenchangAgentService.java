@@ -38,6 +38,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import cn.wenchang.brain.artifact.ArtifactDescriptor;
 import java.util.function.Consumer;
 
 /** V1.4 Agent 编排：Profile + Skill + RAG + Native/MCP Tool + 可公开 Agent Run + Trace。 */
@@ -132,6 +133,7 @@ public class WenchangAgentService {
         String error = null;
         List<ToolCallTrace> calls;
         List<String> toolsUsed;
+        List<String> artifactIds = List.of();
         RuntimeChatModelProvider.ModelHandle modelHandle = modelProvider.current();
         RuntimeChatModelProvider.ModelDescriptor descriptor = modelHandle.descriptor();
         CapabilityRouter.RoutingDecision decision = capabilityRouter.route(message);
@@ -165,7 +167,7 @@ public class WenchangAgentService {
                     "stepId", retrievalStep.id, "count", rag.sources().size()));
             completeStep(retrievalStep, rag.latencyMs(), rag.sources().size(), eventConsumer);
 
-            List<String> toolsToRun = toolsFor(skill, decision);
+            List<String> toolsToRun = toolsFor(skill, decision, message);
             for (String toolName : toolsToRun) {
                 RunStepState toolStep = step(runSteps, "tool-" + toolName);
                 startStep(toolStep, eventConsumer);
@@ -218,7 +220,7 @@ public class WenchangAgentService {
                             + (skill == null ? "" : "\n当前技能：" + skill.systemInstruction()))
                     .advisors(ragService.advisorFor(message, knowledgeCategories, skillCategoryConstraint))
                     .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, sessionId))
-                    .tools(toolRegistry.callbacksExcluding(prefetchedTools).toArray())
+                    .tools(modelCallbacks(skill, prefetchedTools, message).toArray())
                     .toolContext(Map.of(ToolTraceCollector.TRACE_ID_CONTEXT_KEY, traceId,
                             "wenchang.conversationId", sessionId,
                             "wenchang.agentId", profile.id(),
@@ -255,6 +257,7 @@ public class WenchangAgentService {
             if (streaming) chunkConsumer.accept(answer);
         } finally {
             calls = ToolTraceCollector.snapshot(traceId);
+            artifactIds = ToolTraceCollector.artifactIds(traceId);
             toolsUsed = calls.stream().map(ToolCallTrace::toolName)
                     .collect(java.util.stream.Collectors.collectingAndThen(
                             java.util.stream.Collectors.toCollection(LinkedHashSet::new), List::copyOf));
@@ -265,22 +268,44 @@ public class WenchangAgentService {
             ToolTraceCollector.clear(traceId);
         }
         long totalLatency = (System.nanoTime() - totalStarted) / 1_000_000;
+        List<ArtifactDescriptor> artifacts = artifactService.descriptorsByIds(artifactIds);
+        boolean artifactToolCalled = toolsUsed.stream().anyMatch(this::isArtifactTool);
+        answer = enforceArtifactTruth(answer, artifactToolCalled, artifacts);
+        artifacts.forEach(artifact -> emit(eventConsumer, "artifact_created", artifactEvent(artifact)));
+        if (!artifacts.isEmpty()) {
+            RunStepState artifactStep = runSteps.stream().filter(item ->
+                    item.toolName != null && item.toolName.matches("createWenchangWordReport|exportWenchangData|createStudyTourPackage|createPolicyBrief"))
+                    .reduce((first, second) -> second).orElse(null);
+            String actualTool = calls.stream().map(ToolCallTrace::toolName).filter(this::isArtifactTool)
+                    .reduce((first, second) -> second).orElse("createWenchangWordReport");
+            if (artifactStep == null) {
+                artifactStep = new RunStepState("tool-" + actualTool, toolLabel(actualTool), "tool", actualTool);
+                runSteps.add(artifactStep);
+            }
+            artifactStep.status = "completed";
+            artifactStep.toolSource = "MCP";
+            artifactStep.artifactIds = artifacts.stream().map(ArtifactDescriptor::id).toList();
+            artifactStep.sourceCount = artifacts.stream().mapToInt(ArtifactDescriptor::sourceCount).sum();
+            artifactStep.summary = artifacts.stream().map(ArtifactDescriptor::filename)
+                    .collect(java.util.stream.Collectors.joining("、"));
+        }
         AgentRunSummary run = new AgentRunSummary(profile.id(), profile.displayName(),
                 skill == null ? null : skill.id(), skill == null ? null : skill.displayName(),
-                runSteps.stream().map(RunStepState::summary).toList(), toolsUsed.size(), rag.sources().size(), totalLatency);
+                runSteps.stream().map(RunStepState::summary).toList(), toolsUsed.size(), rag.sources().size(), totalLatency,
+                null, null, null, null, artifacts);
         try {
             var persisted = agentRunPersistenceService.persist(sessionId, message, run);
             run = new AgentRunSummary(run.agentId(), run.agentName(), run.skillId(), run.skillName(), run.steps(),
                     run.toolCount(), run.sourceCount(), run.latencyMs(), persisted.id(), persisted.status(),
-                    runStartedAt, persisted.completedAt());
+                    runStartedAt, persisted.completedAt(), artifacts);
         } catch (RuntimeException persistenceFailure) {
             run = new AgentRunSummary(run.agentId(), run.agentName(), run.skillId(), run.skillName(), run.steps(),
                     run.toolCount(), run.sourceCount(), run.latencyMs(), null, "PERSISTENCE_FAILED",
-                    runStartedAt, Instant.now());
+                    runStartedAt, Instant.now(), artifacts);
         }
         return new ChatResponseDto(answer == null ? "" : answer, rag.sources(), toolsUsed, traceId, totalLatency,
                 descriptor.mode(), descriptor.provider(), descriptor.model(), null, profile.id(),
-                skill == null ? null : skill.id(), run, artifactService.list(sessionId));
+                skill == null ? null : skill.id(), run, artifacts);
     }
 
     private List<RunStepState> buildPlan(String message, SkillDefinition skill,
@@ -295,7 +320,7 @@ public class WenchangAgentService {
                 if (!tool.isBlank()) result.add(new RunStepState("tool-" + tool, item.title(), item.stage(), tool));
             }
         } else if (skill != null) {
-            for (String tool : skill.requiredTools()) result.add(new RunStepState("tool-" + tool,
+            for (String tool : toolsFor(skill, decision, message)) result.add(new RunStepState("tool-" + tool,
                     toolLabel(tool), "tool", tool));
         } else if (decision.required()) {
             result.add(new RunStepState("tool-" + decision.toolName(), toolLabel(decision.toolName()),
@@ -362,8 +387,13 @@ public class WenchangAgentService {
         return null;
     }
 
-    private List<String> toolsFor(SkillDefinition skill, CapabilityRouter.RoutingDecision decision) {
-        if (skill != null) return skill.requiredTools();
+    private List<String> toolsFor(SkillDefinition skill, CapabilityRouter.RoutingDecision decision, String message) {
+        if (skill != null) {
+            Set<String> tools = new LinkedHashSet<>(skill.requiredTools());
+            String artifactTool = requestedArtifactTool(skill, message);
+            if (artifactTool != null) tools.add(artifactTool);
+            return List.copyOf(tools);
+        }
         return decision.required() ? List.of(decision.toolName()) : List.of();
     }
 
@@ -516,6 +546,52 @@ public class WenchangAgentService {
         };
     }
 
+    private boolean isArtifactTool(String toolName) {
+        return toolName != null && toolName.matches(
+                "createWenchangWordReport|exportWenchangData|createStudyTourPackage|createPolicyBrief");
+    }
+
+    private List<org.springframework.ai.tool.ToolCallback> modelCallbacks(SkillDefinition skill,
+                                                                          Set<String> prefetchedTools,
+                                                                          String message) {
+        if (skill == null) return toolRegistry.callbacksExcluding(prefetchedTools);
+        Set<String> allowed = allowedModelToolNames(skill, prefetchedTools, message);
+        return toolRegistry.callbacksNamed(allowed);
+    }
+
+    static Set<String> allowedModelToolNames(SkillDefinition skill, Set<String> prefetchedTools, String message) {
+        Set<String> allowed = new LinkedHashSet<>(skill.requiredTools());
+        allowed.removeAll(prefetchedTools);
+        String request = message == null ? "" : message;
+        String artifactTool = requestedArtifactTool(skill, request);
+        if (artifactTool != null) allowed.add(artifactTool);
+        allowed.removeAll(prefetchedTools);
+        return allowed;
+    }
+
+    static String requestedArtifactTool(SkillDefinition skill, String message) {
+        String request = message == null ? "" : message;
+        if (request.matches("(?is).*(excel|xlsx|csv|数据表|表格|清单).*")) return "exportWenchangData";
+        if (!request.matches("(?is).*(word|docx|文档|报告|简报).*")) return null;
+        if ("policy-brief".equals(skill.id())) return "createPolicyBrief";
+        if ("study-tour-plan".equals(skill.id())) return "createStudyTourPackage";
+        return "createWenchangWordReport";
+    }
+
+    private String enforceArtifactTruth(String value, boolean artifactToolCalled, List<ArtifactDescriptor> artifacts) {
+        String answer = value == null ? "" : value;
+        if (!artifactToolCalled || !artifacts.isEmpty()) return answer;
+        String cleaned = java.util.Arrays.stream(answer.split("\\R"))
+                .filter(line -> !line.matches(".*(已生成|生成成功|可直接下载|可下载打开|见下方文件).*"))
+                .collect(java.util.stream.Collectors.joining("\n")).trim();
+        return (cleaned.isBlank() ? "本次资料整理已完成，但文件成果未完成。" : cleaned)
+                + "\n\n> 文件成果未完成：系统没有取得可下载的 Artifact，请稍后重试。";
+    }
+
+    private Map<String, Object> artifactEvent(ArtifactDescriptor artifact) {
+        return mapper.convertValue(artifact, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { });
+    }
+
     private String extractTown(String message) {
         for (String town : List.of("文城镇", "重兴镇", "蓬莱镇", "会文镇", "东路镇", "潭牛镇", "东阁镇",
                 "文教镇", "东郊镇", "龙楼镇", "昌洒镇", "翁田镇", "抱罗镇", "冯坡镇", "锦山镇", "铺前镇", "公坡镇")) {
@@ -593,6 +669,7 @@ public class WenchangAgentService {
         private String errorType;
         private String errorMessage;
         private String inputPreview;
+        private List<String> artifactIds = List.of();
 
         private RunStepState(String id, String label, String type, String toolName) {
             this.id = id; this.label = label; this.type = type; this.toolName = toolName;
@@ -615,12 +692,13 @@ public class WenchangAgentService {
             data.put("summary", summary == null ? "" : summary);
             data.put("errorType", errorType == null ? "" : errorType);
             data.put("error", errorMessage == null ? "" : errorMessage);
+            data.put("artifactIds", artifactIds);
             return data;
         }
 
         private AgentRunStep summary() {
             return new AgentRunStep(id, label, type, toolName, status, latencyMs, sourceCount,
-                    toolSource, summary, errorType, errorMessage, inputPreview);
+                    toolSource, summary, errorType, errorMessage, inputPreview, artifactIds);
         }
     }
 

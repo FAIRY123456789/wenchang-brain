@@ -799,8 +799,11 @@ async function sendMessage(raw) {
         finalizeAssistantMarkdown(assistant, data.answer || '');
         if (run) completeAgentRun(run, data);
         addMessageMeta(assistant.element, {...data, agentId: data.agentId || agent.id, skillId: data.skillId || skill?.id});
-        addArtifactCards(assistant.element, data.artifacts || data.agentRun?.artifacts || []);
-        await refreshConversationArtifacts(state.activeConversationId, assistant.element);
+        const completedArtifacts = data.artifacts || data.agentRun?.artifacts || [];
+        addArtifactCards(assistant.element, completedArtifacts);
+        if (!Array.isArray(completedArtifacts) || !completedArtifacts.length) {
+          await refreshConversationArtifacts(state.activeConversationId, assistant.element);
+        }
         await loadConversations();
       } else if (event === 'error') {
         throw new Error(data.message || '生成回答失败');
@@ -1017,7 +1020,11 @@ function createAgentRun(element, agent, skill) {
   list.className = 'agent-run-steps';
   details.append(summary, list);
   element.querySelector('.message-content').before(details);
-  const run = {details, summaryText, list, steps: new Map(), tools: new Set(), sourceCount: 0, namedEvents: false};
+  const outcomes = document.createElement('section');
+  outcomes.className = 'agent-run-artifacts';
+  outcomes.hidden = true;
+  details.append(outcomes);
+  const run = {details, summaryText, list, outcomes, steps: new Map(), tools: new Set(), sourceCount: 0, namedEvents: false};
   upsertRunStep(run, {id: 'prepare', title: '正在制定公开任务计划', status: 'running'});
   return run;
 }
@@ -1139,8 +1146,22 @@ function completeAgentRun(run, data = {}) {
     || (Array.isArray(data.sources) ? data.sources.length : run.sourceCount);
   run.sourceCount = Math.max(run.sourceCount, sources);
   const completed = [...run.steps.values()].filter((step) => step.status === 'complete').length;
-  run.summaryText.textContent = `已完成 ${completed} 个步骤 · ${toolsCount} 个工具 · ${run.sourceCount} 个来源`;
+  const artifactCount = Number(data.agentRun?.artifactCount)
+    || (Array.isArray(data.artifacts) ? data.artifacts.length : 0);
+  run.summaryText.textContent = `已完成 ${completed} 个步骤 · ${toolsCount} 个工具 · ${run.sourceCount} 个来源`
+    + (artifactCount ? ` · ${artifactCount} 个文件` : '');
   run.details.classList.add('complete');
+  const artifacts = Array.isArray(data.artifacts) ? data.artifacts : [];
+  if (artifacts.length) {
+    const heading = document.createElement('strong');
+    heading.textContent = '成果';
+    run.outcomes.replaceChildren(heading, ...artifacts.map((artifact) => {
+      const item = document.createElement('span');
+      item.textContent = artifact.filename || artifact.displayName || '任务文件';
+      return item;
+    }));
+    run.outcomes.hidden = false;
+  }
   run.details.open = false;
 }
 
@@ -1280,9 +1301,12 @@ function addArtifactCards(element, artifacts) {
     icon.textContent = artifactIcon(artifact);
     const copy = document.createElement('div');
     const filename = document.createElement('b');
-    filename.textContent = artifact.filename || '文昌智脑任务文件';
+    filename.className = 'artifact-name';
+    filename.textContent = artifact.displayName || artifact.filename || '文昌智脑任务文件';
     const detail = document.createElement('small');
-    detail.textContent = [artifact.type, Number(artifact.sourceCount) ? `${artifact.sourceCount} 个来源` : '']
+    detail.className = 'artifact-meta';
+    const size = Number(artifact.sizeBytes || artifact.size) > 0 ? formatFileSize(artifact.sizeBytes || artifact.size) : '';
+    detail.textContent = [artifactTypeLabel(artifact), size, Number(artifact.sourceCount) ? `${artifact.sourceCount} 个来源` : '']
       .filter(Boolean).join(' · ') || '任务成果';
     copy.append(filename, detail);
     const actions = document.createElement('div');
@@ -1295,14 +1319,31 @@ function addArtifactCards(element, artifacts) {
       open.rel = 'noopener noreferrer';
       open.textContent = '打开';
       const download = document.createElement('a');
+      download.className = 'artifact-download';
       download.href = downloadUrl;
       download.download = artifact.filename || '';
-      download.textContent = '下载';
+      download.textContent = '下载文件';
       actions.append(open, download);
     }
     card.append(icon, copy, actions);
     container.append(card);
   });
+}
+
+function formatFileSize(value) {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function artifactTypeLabel(artifact = {}) {
+  const type = String(artifact.type || '').toUpperCase();
+  if (type.includes('WORD')) return 'Word 文档';
+  if (type === 'XLSX') return 'Excel 工作簿';
+  if (type === 'CSV') return 'CSV 数据';
+  if (type === 'PDF') return 'PDF 文档';
+  return type || '任务文件';
 }
 
 async function refreshConversationArtifacts(conversationId, preferredElement = null) {

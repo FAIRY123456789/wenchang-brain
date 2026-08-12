@@ -59,6 +59,9 @@ public class AgentStepEntity {
     @Lob
     private String inputPreview;
 
+    @Lob
+    private String artifactIdsJson;
+
     protected AgentStepEntity() { }
 
     public AgentStepEntity(AgentRunEntity agentRun, int sequence, String name, String stage,
@@ -81,6 +84,8 @@ public class AgentStepEntity {
         this.inputPreview = inputPreview;
     }
 
+    public void attachArtifactIds(String artifactIdsJson) { this.artifactIdsJson = artifactIdsJson; }
+
     public Long getId() { return id; }
     public int getSequence() { return sequence; }
     public String getName() { return name; }
@@ -95,4 +100,5 @@ public class AgentStepEntity {
     public String getErrorType() { return errorType; }
     public String getErrorMessage() { return errorMessage; }
     public String getInputPreview() { return inputPreview; }
+    public String getArtifactIdsJson() { return artifactIdsJson; }
 }

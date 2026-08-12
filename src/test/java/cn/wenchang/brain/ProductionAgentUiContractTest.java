@@ -50,10 +50,13 @@ class ProductionAgentUiContractTest {
                 "function addArtifactCards(element, artifacts)", "event === 'artifact_created'",
                 "event === 'approval_required'", "function runAgentDiagnostics()",
                 "function refreshConversationArtifacts(conversationId, preferredElement = null)");
+        assertThat(app).contains("artifact-name", "artifact-meta", "artifact-download", "下载文件")
+                .contains("appUrl(`/api/artifacts/${encodeURIComponent")
+                .contains("artifactCount ? ` · ${artifactCount} 个文件`");
         assertThat(app).contains("/api/agent/approvals/${encodeURIComponent(id)}");
         assertThat(css).contains(
                 ".agent-context-card", ".agent-detail-panel", ".skill-detail-panel", ".artifact-card",
-                ".approval-panel", ".diagnostics-grid");
+                ".artifact-card .artifact-download", ".approval-panel", ".diagnostics-grid");
     }
 
     private static String read(String relativePath) throws IOException {

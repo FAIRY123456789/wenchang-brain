@@ -102,6 +102,14 @@ public class WenchangToolRegistry {
         return List.copyOf(combined);
     }
 
+    public List<ToolCallback> callbacksNamed(Set<String> allowedToolNames) {
+        if (allowedToolNames == null || allowedToolNames.isEmpty()) return List.of();
+        return callbacksExcluding(Set.of()).stream().filter(callback -> {
+            String name = callback.getToolDefinition().name();
+            return allowedToolNames.contains(name) || allowedToolNames.stream().anyMatch(name::endsWith);
+        }).toList();
+    }
+
     /** 确定性路由也通过 ToolCallback 执行，保证与模型自主调用拥有相同 Schema 和 Trace。 */
     public String invokeNative(String toolName, Map<String, Object> arguments, String traceId) {
         ToolCallback callback = nativeTools.get(toolName);

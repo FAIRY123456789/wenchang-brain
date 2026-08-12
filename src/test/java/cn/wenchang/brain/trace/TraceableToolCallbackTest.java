@@ -74,4 +74,56 @@ class TraceableToolCallbackTest {
             assertThat(trace.errorType()).isEqualTo("ANTI_BOT");
         });
     }
+
+    @Test
+    void mcpArtifactCallUsesAuthoritativeConversationContextAndCollectsArtifactId() {
+        java.util.concurrent.atomic.AtomicReference<String> actualInput = new java.util.concurrent.atomic.AtomicReference<>();
+        ToolCallback delegate = new ToolCallback() {
+            @Override public ToolDefinition getToolDefinition() {
+                return ToolDefinition.builder().name("createWenchangWordReport").description("artifact")
+                        .inputSchema("{\"type\":\"object\"}").build();
+            }
+            @Override public String call(String input) {
+                actualInput.set(input);
+                return "[{\"type\":\"text\",\"text\":\"{\\\"artifactId\\\":\\\"artifact-123\\\","
+                        + "\\\"filename\\\":\\\"report.docx\\\"}\"}]";
+            }
+        };
+        ToolTraceCollector.begin(TRACE_ID);
+        var context = new ToolContext(Map.of(
+                ToolTraceCollector.TRACE_ID_CONTEXT_KEY, TRACE_ID,
+                ToolTraceCollector.CONVERSATION_ID_CONTEXT_KEY, "real-conversation-uuid",
+                ToolTraceCollector.AGENT_ID_CONTEXT_KEY, "wenchang",
+                ToolTraceCollector.SKILL_ID_CONTEXT_KEY, "public-service"));
+
+        new TraceableToolCallback(delegate, "MCP").call(
+                "{\"conversationId\":\"model-invented-id\",\"createdByAgent\":\"wrong\"}", context);
+
+        assertThat(actualInput.get()).contains("real-conversation-uuid", "wenchang", "public-service")
+                .doesNotContain("model-invented-id", "wrong");
+        assertThat(ToolTraceCollector.artifactIds(TRACE_ID)).containsExactly("artifact-123");
+    }
+
+    @Test
+    void mcpQueryToolKeepsItsDeclaredSchemaInputUntouched() {
+        java.util.concurrent.atomic.AtomicReference<String> actualInput = new java.util.concurrent.atomic.AtomicReference<>();
+        ToolCallback delegate = new ToolCallback() {
+            @Override public ToolDefinition getToolDefinition() {
+                return ToolDefinition.builder().name("searchPublicServices").description("query")
+                        .inputSchema("{\"type\":\"object\",\"additionalProperties\":false}").build();
+            }
+            @Override public String call(String input) {
+                actualInput.set(input);
+                return "[]";
+            }
+        };
+        var context = new ToolContext(Map.of(
+                ToolTraceCollector.TRACE_ID_CONTEXT_KEY, TRACE_ID,
+                ToolTraceCollector.CONVERSATION_ID_CONTEXT_KEY, "real-conversation-uuid"));
+
+        new TraceableToolCallback(delegate, "MCP").call("{\"keyword\":\"高中\"}", context);
+
+        assertThat(actualInput.get()).isEqualTo("{\"keyword\":\"高中\"}")
+                .doesNotContain("conversationId");
+    }
 }

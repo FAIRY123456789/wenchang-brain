@@ -179,8 +179,10 @@ public class ProductionArtifactTools {
     }
 
     private ArtifactResult result(ArtifactManifest manifest, String summary, int sourceCount) {
-        return new ArtifactResult(manifest.id(), manifest.filename(), manifest.downloadUrl(), manifest.type(),
-                manifest.conversationId(), manifest.createdAt(), sourceCount, summary);
+        String displayName = manifest.filename().replaceFirst("\\.[^.]+$", "");
+        return new ArtifactResult(manifest.id(), manifest.id(), manifest.conversationId(), manifest.type(),
+                manifest.filename(), displayName, manifest.contentType(), manifest.size(), manifest.createdAt(),
+                manifest.downloadUrl(), false, sourceCount, manifest.createdByAgent(), manifest.skillId(), summary);
     }
 
     private String sourceOf(Map<String, String> row) {
@@ -219,6 +221,8 @@ public class ProductionArtifactTools {
     private String defaultSkill(String value, String fallback) { return defaultText(value, fallback); }
     private String defaultText(String value, String fallback) { return value == null || value.isBlank() ? fallback : value; }
 
-    public record ArtifactResult(String artifactId, String filename, String downloadUrl, String type,
-                                 String conversationId, String createdAt, int sourceCount, String summary) { }
+    public record ArtifactResult(String artifactId, String id, String conversationId, String type,
+                                 String filename, String displayName, String mimeType, long sizeBytes,
+                                 String createdAt, String downloadUrl, boolean previewAvailable,
+                                 int sourceCount, String createdByAgent, String skillId, String summary) { }
 }
