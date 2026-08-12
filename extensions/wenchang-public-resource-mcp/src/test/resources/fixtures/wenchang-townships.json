@@ -1,0 +1,15 @@
+{
+  "version": "test",
+  "townships": [
+    {
+      "id": "town-longlou",
+      "town": "龙楼镇",
+      "basicProfile": "文昌东部滨海乡镇",
+      "featuredIndustries": ["航天文旅", "热带农业"],
+      "culture": ["滨海村落文化"],
+      "ecology": ["海岸带"],
+      "importantFacilities": ["航天科普设施"],
+      "sources": [{"organization": "文昌市人民政府", "url": "https://wenchang.hainan.gov.cn/example/longlou"}]
+    }
+  ]
+}

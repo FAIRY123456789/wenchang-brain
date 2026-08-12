@@ -1,0 +1,26 @@
+[Unit]
+Description=Wenchang Brain MCP Task Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wenchang
+Group=wenchang
+WorkingDirectory=/opt/wenchang-brain
+EnvironmentFile=/opt/wenchang-brain/config/runtime.env
+ExecStart=@@JAVA_BIN@@ -Xms64m -Xmx128m -XX:MaxMetaspaceSize=128m -Dfile.encoding=UTF-8 -jar /opt/wenchang-brain/mcp/current.jar --server.address=127.0.0.1 --server.port=18091
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+SuccessExitStatus=143
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/wenchang-brain/data /opt/wenchang-brain/logs
+MemoryMax=320M
+LimitNOFILE=16384
+
+[Install]
+WantedBy=multi-user.target

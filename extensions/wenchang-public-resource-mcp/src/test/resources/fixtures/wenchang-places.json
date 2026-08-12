@@ -1,0 +1,23 @@
+{
+  "version": "test",
+  "places": [
+    {
+      "id": "place-science",
+      "sourceId": "SRC-TEST-PLACE-001",
+      "name": "文昌航天科普中心",
+      "category": "aerospace_science",
+      "town": "龙楼镇",
+      "latitude": 19.65,
+      "longitude": 110.93,
+      "themes": ["航天科普", "运载火箭"],
+      "summary": "航天主题研学地点",
+      "suitableAge": "小学高年级及以上",
+      "learningPoints": ["理解发射任务流程"],
+      "accessType": "按最新预约安排参访",
+      "sourceOrganization": "文化和旅游部",
+      "sourceUrl": "https://www.mct.gov.cn/example/science",
+      "sourceLevel": "P0",
+      "retrievedAt": "2026-08-11"
+    }
+  ]
+}

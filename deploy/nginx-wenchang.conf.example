@@ -1,0 +1,18 @@
+# Insert these locations into the existing server block that owns the public site.
+location = /wenchang-brain {
+    return 301 /wenchang-brain/;
+}
+
+location /wenchang-brain/ {
+    proxy_pass http://127.0.0.1:18080/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Prefix /wenchang-brain;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 180s;
+    proxy_send_timeout 180s;
+}

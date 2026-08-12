@@ -1,0 +1,20 @@
+* text=auto
+
+*.sh text eol=lf
+*.service text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.conf text eol=lf
+*.properties text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.docx binary
+*.xlsx binary
+*.jar binary

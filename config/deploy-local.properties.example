@@ -1,0 +1,4 @@
+deploy.host=
+deploy.port=22
+deploy.user=
+deploy.identity-file=

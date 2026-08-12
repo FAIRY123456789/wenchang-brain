@@ -1,0 +1,162 @@
+# 文昌智脑 V1 · 阿里云 ECS 部署记录
+
+## 发布状态
+
+2026-08-12 已完成正式部署和公网验收。Release 为 `1.5.0-rc1-20260812`；公网地址为 `http://120.26.238.159/wenchang-brain/`。服务器仅开放现有 80 端口，主应用与 MCP 保持 loopback。
+
+## 固定拓扑
+
+- 目标 ECS：`120.26.238.159`
+- 公网路径：`http://120.26.238.159/wenchang-brain/`
+- Nginx：复用现有 80/443，只新增 `/wenchang-brain/` location
+- 主应用：`127.0.0.1:18080`
+- MCP：`127.0.0.1:18091`
+- 应用目录：`/opt/wenchang-brain/`
+- 运行用户：`wenchang`
+- Secrets：`/opt/wenchang-brain/config/local-secrets.properties`，权限 `0600`
+- H2：`/opt/wenchang-brain/data/chat/wenchang-chat`
+- VectorStore：`/opt/wenchang-brain/data/wenchang-vector-store.json`
+- Artifact：`/opt/wenchang-brain/data/artifacts/`
+- Research Dataset：`/opt/wenchang-brain/data/research/`
+- Knowledge：`/opt/wenchang-brain/knowledge/`
+
+## 本地冻结
+
+- Version：`1.5.0-SNAPSHOT` / 产品标识 `V1.5`
+- 主 JAR：`target/wenchang-brain-1.5.0-SNAPSHOT.jar`
+- MCP JAR：`extensions/wenchang-public-resource-mcp/target/wenchang-public-resource-mcp-1.4.0-SNAPSHOT.jar`
+- 主应用测试：72 tests，0 failure，0 error
+- MCP 测试：7 tests，0 failure，0 error
+- Base Path：静态资源、fetch、SSE、Artifact、审批和 Logo 均经过统一 `APP_BASE_PATH` 适配
+- 主 JAR SHA-256：`3344be68f74772128cf6f4127866d6d5655cf21aa39a863218c9462f9194783c`
+- MCP JAR SHA-256：`29663181134c262d9416ee783aa235f78e9989836fa2361a00cb57163a63c926`
+- Git Commit：`UNCOMMITTED`（仓库当前没有可引用提交，不伪造 commit）
+
+## 生产环境实测
+
+- OS：Alibaba Cloud Linux 3.2104 U13.2，x86_64
+- Java：OpenJDK 17.0.20 Headless；systemd 使用明确的 Java 绝对路径
+- 容量：1.8 GiB RAM、无 Swap；上线后 MemAvailable 约 918 MiB；根盘可用约 17 GiB
+- MCP：active/enabled，7 tools，当前启动周期 0 error / 0 restart
+- Main：active/enabled，当前启动周期 0 error / 0 restart
+- RAG：50 files / 136 chunks；VectorStore `LOADED`，corpusSignature=`23194410bf6a1a3c9869edadb773d92d47188257c91f296ca08af3689f0ddf75`
+- DeepSeek：`REMOTE_DEFAULT / deepseek-chat`，真实 connection 和 diagnosticEcho Tool Calling PASS
+- Search：Tavily `AVAILABLE`；官方检索真实得到 6 条官方白名单结果；Brave 未配置（可选）
+- MCP 协议：initialize=200、protocol=2025-11-25、tools/list=7、tools/call=200/isError=false
+- Agent：政策简报完成 7 steps 并调用 5 个工具；DeepSeek 也真实调用 MCP `searchPublicServices`
+- Artifact：Word 与 XLSX 均真实生成，公网下载 HTTP 200，并用文档库重新打开；中文、来源、URL 均通过
+- Conversation：服务重启前后消息、Agent、Skill、来源和 Agent Run 保持不变
+- SSE：公网 101 个 `answer_chunk`，最终 `complete`，无 error
+- 浏览器：首页/资源/Command Bar/Composer/历史/Artifact 卡片通过；无水平溢出；页面应用 Console 0 error
+- Existing Sites：`/` 与 `/future-bay-eco-lab/` 上线前后均 HTTP 200
+- Nginx backup：`/etc/nginx/conf.d/htmlsite.conf.bak-20260812T024602Z-pre-wenchang`
+- Rollback metadata：`/opt/wenchang-brain/backups/rollback-20260812T024359Z.properties`
+
+## 首次连接与只读预检
+
+SSH 参数不得写入仓库；本地使用被 `.gitignore` 排除的 `config/deploy-local.properties`。连接成功后，先只读执行并保存：
+
+```bash
+cat /etc/os-release
+uname -a
+uname -m
+hostnamectl
+free -h
+df -h
+uptime
+java -version
+which java
+readlink -f "$(which java)"
+python --version || true
+python3 --version || true
+node --version || true
+npm --version || true
+nginx -v
+systemctl --type=service --state=running
+ss -lntp
+ps aux --sort=-%mem | head -30
+du -sh /opt/* 2>/dev/null
+```
+
+必须确认 18080/18091 未占用、Java 17+ 可用、内存/磁盘足够、已有 Nginx owner 配置和现有站点基线状态。不得修改系统默认 Python、Node 或全局 Java alternatives。
+
+## Release 安装
+
+上传并解压 UTF-8 `tar.gz` Release 后，先执行 `sha256sum -c checksums.sha256`。不使用 Windows `Compress-Archive`，避免中文知识文件名在 Linux 解压时损坏。选择服务器现有 Java 17+ 的真实绝对路径；如不兼容，则在 `/opt/wenchang-brain/runtime/` 安装隔离 Java 17，不能替换全局默认 Java。
+
+```bash
+sudo bash deploy/deploy.sh <extracted-release-dir> <absolute-java17-bin>
+```
+
+脚本创建版本目录、持久目录、低权限用户、systemd unit、当前版本 symlink 和回滚 metadata。它不会覆盖已经存在的服务器 Secrets。
+
+## Secrets
+
+服务器首次安装会由空模板创建：
+
+```text
+/opt/wenchang-brain/config/local-secrets.properties
+```
+
+仅由 root 或 `wenchang` 用户读取，至少填写当前项目定义的 DeepSeek 与 Tavily 字段；Brave 可选。不要在聊天、日志、Release、Git 或命令历史中传递明文 Key。
+
+```bash
+sudo chmod 600 /opt/wenchang-brain/config/local-secrets.properties
+sudo chown wenchang:wenchang /opt/wenchang-brain/config/local-secrets.properties
+sudo systemctl restart wenchang-brain
+```
+
+## 服务操作
+
+```bash
+sudo systemctl start wenchang-mcp wenchang-brain
+sudo systemctl stop wenchang-brain wenchang-mcp
+sudo systemctl restart wenchang-mcp
+sudo systemctl restart wenchang-brain
+sudo systemctl status wenchang-mcp wenchang-brain --no-pager
+sudo journalctl -u wenchang-mcp -n 200 --no-pager
+sudo journalctl -u wenchang-brain -n 200 --no-pager
+```
+
+systemd 使用明确 Java 绝对路径、loopback 地址、有限 JVM Heap、`Restart=on-failure` 和文件系统写权限白名单。针对 1.8 GiB、无 Swap 的当前 ECS，主应用为 `Xmx320m / MemoryMax=560M`，MCP 为 `Xmx128m / MemoryMax=320M`。
+
+## 内部 Health Check
+
+```bash
+curl -fsS http://127.0.0.1:18091/actuator/health
+curl -fsS http://127.0.0.1:18080/api/health
+curl -fsS http://127.0.0.1:18080/api/admin/diagnostics/agent
+curl -fsS http://127.0.0.1:18080/api/agent/tools
+```
+
+只有 MCP、RAG、VectorStore、Conversation、DeepSeek、Tavily 与 Artifact 的真实状态满足验收，才允许接入公网。
+
+## Nginx
+
+先找出当前 server block 的实际 owner 文件并备份。将 `deploy/nginx-wenchang.conf.example` 中两个 location 加到该 server block，不能覆盖已有 root 或其他 location。
+
+```bash
+sudo cp -a <nginx-owner-file> <nginx-owner-file>.bak-<UTC_TIMESTAMP>
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+若 `nginx -t` 失败，立即恢复备份；只能 reload，不能因本项目 restart Nginx。上线前后分别验证首页、`/future-bay-eco-lab/` 以及侦察所得其他现有路径。
+
+## 公网验收
+
+最终地址为 `http://120.26.238.159/wenchang-brain/`。静态资源、Conversation、服务重启后 H2 恢复、DeepSeek SSE、Markdown、Agent、Skill、RAG、一次 Tavily 诊断查询、MCP initialize/tools/list/tools/call、Word/XLSX Artifact 生成与 HTTP 200 下载均已通过；浏览器页面 Console 0 error。
+
+## 更新与回滚
+
+每次升级都从本地构建新 Release，上传并切换 symlink，禁止在生产服务器修改源码。部署命令会输出 rollback metadata：
+
+```bash
+sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-<timestamp>.properties
+```
+
+若已经接入 Nginx 且必须撤回路由，恢复对应 Nginx 备份，先 `nginx -t`，成功后仅 reload。
+
+## 未记录的敏感信息
+
+本文不记录密码、API Key、SSH 私钥内容或私钥文件名。服务器配置必须使用 `vim`，禁止使用 `nano`；所有检查仅输出配置布尔值或脱敏状态。

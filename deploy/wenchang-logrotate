@@ -1,0 +1,11 @@
+/opt/wenchang-brain/logs/*.log /opt/wenchang-brain/logs/*.jsonl {
+    daily
+    rotate 14
+    size 20M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su wenchang wenchang
+}

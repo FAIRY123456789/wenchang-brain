@@ -1,0 +1,180 @@
+{
+  "version": "1.0",
+  "verifiedAt": "2026-08-11",
+  "rules": {
+    "match": "exact domain or declared subdomain only",
+    "pageLevelOverride": "转载内容按原始作者降级，域名默认等级不自动继承",
+    "requiredResultFields": ["title", "url", "snippet", "sourceOrganization", "retrievedAt"]
+  },
+  "sources": [
+    {
+      "name": "海南省人民政府",
+      "domain": "hainan.gov.cn",
+      "category": "provincial_government",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.hainan.gov.cn/hainan/"
+    },
+    {
+      "name": "海南省统计局",
+      "domain": "stats.hainan.gov.cn",
+      "category": "statistics",
+      "level": "P0",
+      "includeSubdomains": false,
+      "verificationEvidenceUrl": "https://stats.hainan.gov.cn/"
+    },
+    {
+      "name": "国家文物局",
+      "domain": "ncha.gov.cn",
+      "category": "cultural_heritage",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.ncha.gov.cn/"
+    },
+    {
+      "name": "国务院侨务办公室",
+      "domain": "gqb.gov.cn",
+      "category": "overseas_chinese_affairs",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.gqb.gov.cn/"
+    },
+    {
+      "name": "中国人民政治协商会议全国委员会",
+      "domain": "cppcc.gov.cn",
+      "category": "national_institution_history",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.cppcc.gov.cn/"
+    },
+    {
+      "name": "中国载人航天工程办公室",
+      "domain": "cmse.gov.cn",
+      "category": "aerospace_manned",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.cmse.gov.cn/"
+    },
+    {
+      "name": "国家航天局",
+      "domain": "cnsa.gov.cn",
+      "category": "aerospace_national",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.cnsa.gov.cn/"
+    },
+    {
+      "name": "中国航天科技集团有限公司",
+      "domain": "spacechina.com",
+      "category": "aerospace_industry",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.spacechina.com/"
+    },
+    {
+      "name": "文昌国际航天城管理局",
+      "domain": "wchtc.net",
+      "category": "aerospace_park",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.wchtc.net/xinwen/2020/show-43.html",
+      "verificationNote": "页面页脚标明主办单位为文昌国际航天城管理局并公示琼ICP备2020003525号"
+    },
+    {
+      "name": "中华人民共和国生态环境部",
+      "domain": "mee.gov.cn",
+      "category": "ecology_environment",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.mee.gov.cn/"
+    },
+    {
+      "name": "广州海洋地质调查局",
+      "domain": "gmgs.cgs.gov.cn",
+      "category": "marine_research",
+      "level": "P1",
+      "includeSubdomains": false,
+      "verificationEvidenceUrl": "https://www.gmgs.cgs.gov.cn/"
+    },
+    {
+      "name": "海南省财政厅",
+      "domain": "mof.hainan.gov.cn",
+      "category": "provincial_finance_policy",
+      "level": "P0",
+      "includeSubdomains": false,
+      "verificationEvidenceUrl": "https://mof.hainan.gov.cn/"
+    },
+    {
+      "name": "中华人民共和国应急管理部",
+      "domain": "mem.gov.cn",
+      "category": "disaster_emergency",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.mem.gov.cn/"
+    },
+    {
+      "name": "海南省气象局",
+      "domain": "hi.cma.gov.cn",
+      "category": "meteorology",
+      "level": "P0",
+      "includeSubdomains": false,
+      "verificationEvidenceUrl": "https://hi.cma.gov.cn/"
+    },
+    {
+      "name": "海南省农业农村厅",
+      "domain": "agri.hainan.gov.cn",
+      "category": "agriculture_fisheries",
+      "level": "P0",
+      "includeSubdomains": false,
+      "verificationEvidenceUrl": "https://agri.hainan.gov.cn/"
+    },
+    {
+      "name": "中华人民共和国文化和旅游部",
+      "domain": "mct.gov.cn",
+      "category": "culture_tourism",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.mct.gov.cn/"
+    },
+    {
+      "name": "海南省市场监督管理局",
+      "domain": "amr.hainan.gov.cn",
+      "category": "standards_geographical_indications",
+      "level": "P0",
+      "includeSubdomains": false,
+      "verificationEvidenceUrl": "https://amr.hainan.gov.cn/"
+    },
+    {
+      "name": "国家统计局",
+      "domain": "stats.gov.cn",
+      "category": "national_statistics",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.stats.gov.cn/"
+    },
+    {
+      "name": "中华人民共和国交通运输部",
+      "domain": "mot.gov.cn",
+      "category": "national_transportation",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.mot.gov.cn/"
+    },
+    {
+      "name": "中华人民共和国教育部",
+      "domain": "moe.gov.cn",
+      "category": "national_education",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.moe.gov.cn/"
+    },
+    {
+      "name": "国家知识产权局",
+      "domain": "cnipa.gov.cn",
+      "category": "intellectual_property_and_geographical_indications",
+      "level": "P0",
+      "includeSubdomains": true,
+      "verificationEvidenceUrl": "https://www.cnipa.gov.cn/"
+    }
+  ]
+}

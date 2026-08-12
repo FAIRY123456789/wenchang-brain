@@ -1,0 +1,20 @@
+# 文昌智脑 V1.4 内置公共资源 MCP 连接。
+# 先启动 extensions/wenchang-public-resource-mcp，再以 --spring.profiles.active=mcp 启动主应用。
+spring:
+  config:
+    activate:
+      on-profile: mcp
+  ai:
+    mcp:
+      client:
+        enabled: true
+        initialized: true
+        type: SYNC
+        request-timeout: 20s
+        toolcallback:
+          enabled: true
+        streamable-http:
+          connections:
+            wenchang-public-resource:
+              url: http://127.0.0.1:8091
+              endpoint: /mcp

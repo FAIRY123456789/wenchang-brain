@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN" data-app-state="APP_LOADING" data-hydrated="false">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7fafc">
+  <meta name="description" content="文昌智脑：连接文昌知识库、实时信息与智能模型的文昌城市知识智能体。">
+  <title>文昌智脑 · 从海岸向星辰提问</title>
+  <link rel="icon" type="image/svg+xml" href="assets/wenchang-logo.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#messageInput">跳到提问框</a>
+  <div class="app-loading" id="appLoading" role="status" aria-live="polite">
+    <span class="loading-logo" aria-hidden="true"><img src="assets/wenchang-logo.svg" alt=""></span>
+    <span id="appLoadingText">正在恢复文昌智脑</span>
+    <span class="loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <button id="appRetry" type="button" hidden>重新加载</button>
+  </div>
+  <div class="mobile-overlay" id="mobileOverlay" hidden></div>
+
+  <div class="app-frame">
+    <aside class="sidebar" id="sidebar" aria-label="会话导航">
+      <div class="sidebar-brand">
+        <span class="brand-mark" aria-hidden="true"><img src="assets/wenchang-logo.svg" alt=""></span>
+        <span><strong>文昌智脑</strong><small>WENCHANG BRAIN</small></span>
+        <button class="icon-button sidebar-close" id="sidebarClose" type="button" aria-label="关闭侧栏">×</button>
+      </div>
+
+      <button class="new-chat-button" id="newChatButton" type="button">
+        <span aria-hidden="true">＋</span><span>新对话</span>
+      </button>
+
+      <div class="history" id="history" aria-live="polite">
+        <div class="history-empty" id="historyEmpty">还没有历史对话<br><span>发送第一条消息后会自动保存</span></div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="settings-button" id="settingsButton" type="button" aria-haspopup="dialog" aria-controls="settingsDrawer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.3 1A8 8 0 0 0 15 6l-.3-2.5h-4L10.4 6a8 8 0 0 0-1.6 1L6.5 6l-2 3.5L6.6 11a7 7 0 0 0 0 2l-2.1 1.5 2 3.5 2.3-1a8 8 0 0 0 1.6 1l.3 2.5h4L15 18a8 8 0 0 0 1.6-1l2.3 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z"/></svg>
+          <span class="settings-copy"><strong>模型与设置</strong><small id="sidebarModelLabel">正在读取模型状态</small></span>
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main" id="mainContent" aria-busy="true">
+      <header class="mobile-header">
+        <button class="icon-button" id="sidebarOpen" type="button" aria-label="打开会话侧栏" aria-controls="sidebar" aria-expanded="false">☰</button>
+        <strong>文昌智脑</strong>
+        <span class="mini-status" id="mobileStatus">连接中</span>
+      </header>
+
+      <section class="hero" id="hero" aria-labelledby="heroTitle">
+        <div class="hero-photo" aria-hidden="true"></div>
+        <div class="hero-shade" aria-hidden="true"></div>
+        <div class="hero-content">
+          <span class="hero-kicker">WENCHANG · HAINAN</span>
+          <h1 id="heroTitle"><span>从海岸出发</span><span>向星辰提问</span></h1>
+          <p>连接文昌知识、实时信息与智能模型，探索航天、生态、文化和城市生活。</p>
+          <div class="hero-statuses">
+            <span id="knowledgePill"><i></i><b>知识库连接中</b></span>
+            <span id="modelPill"><i></i><b>模型连接中</b></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="conversation" id="conversation" aria-live="polite">
+        <div class="welcome-copy" id="welcomeCopy">
+          <h2>想了解文昌的哪一面？</h2>
+          <p>可以从航天发射、滨海生态、侨乡文化或研学路线开始。</p>
+        </div>
+        <div class="suggestions" id="suggestions">
+          <button type="button" data-prompt="请用一分钟介绍文昌的航天、生态与文化特色。"><span>01</span><b>一分钟认识文昌</b><small>城市概览</small></button>
+          <button type="button" data-prompt="请设计一条包含航天、滨海生态和历史文化的文昌一日研学路线。"><span>02</span><b>设计一日研学路线</b><small>路线规划</small></button>
+          <button type="button" data-prompt="文昌近期有什么重要航天发射？请联网核验并说明观看注意事项。"><span>03</span><b>查询近期航天动态</b><small>实时信息</small></button>
+        </div>
+        <div class="messages" id="messages"></div>
+      </section>
+
+      <div class="composer-zone">
+        <div class="progress" id="progress" hidden><span class="spinner"></span><span id="progressText">正在思考</span></div>
+        <section class="agent-command-bar" id="agentCommandBar" data-command-state="COMMAND_IDLE" aria-label="智能体与技能命令栏">
+          <div class="command-idle" id="commandIdle">
+            <button class="command-entry" id="agentCommandTrigger" type="button" aria-expanded="false" aria-controls="commandPalette">
+              <span class="command-symbol" aria-hidden="true">@</span>
+              <span class="command-entry-copy"><strong>选择智能体</strong><small>选择一个专业智能体，让它按照对应领域和工作方式完成任务</small></span>
+              <em>查看全部</em>
+            </button>
+            <button class="command-entry" id="skillCommandTrigger" type="button" aria-expanded="false" aria-controls="commandPalette">
+              <span class="command-symbol" aria-hidden="true">/</span>
+              <span class="command-entry-copy"><strong>使用技能</strong><small>直接调用研究、检索、生成文件、研学规划等任务能力</small></span>
+              <em>查看全部</em>
+            </button>
+          </div>
+          <div class="composer-selections" id="composerSelections" hidden aria-label="已选择能力"></div>
+          <div class="command-palette" id="commandPalette" hidden role="listbox" aria-label="选择智能体或技能"></div>
+        </section>
+        <form class="composer" id="chatForm">
+          <textarea id="messageInput" rows="1" maxlength="4000" placeholder="问文昌智脑任何问题..." aria-label="输入问题" aria-haspopup="listbox" aria-autocomplete="list"></textarea>
+          <div class="composer-footer">
+            <span>Enter 发送 · Shift + Enter 换行</span>
+            <button id="sendButton" type="submit" aria-label="发送消息">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-4 14-3-6-7-1Z"/><path d="m12 13 7-8"/></svg>
+            </button>
+          </div>
+        </form>
+        <p class="disclaimer">回答由知识检索与智能模型生成，重要信息请结合来源核验。</p>
+      </div>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+  <aside class="settings-drawer" id="settingsDrawer" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true" inert>
+    <header>
+      <div><span class="eyebrow">MODEL SETTINGS</span><h2 id="settingsTitle">模型与设置</h2></div>
+      <button class="icon-button" id="settingsClose" type="button" aria-label="关闭设置">×</button>
+    </header>
+    <div class="settings-scroll">
+      <section class="model-overview">
+        <span class="model-dot"></span>
+        <div><strong id="activeModelName">正在读取</strong><small id="activeModelMode">—</small></div>
+      </section>
+      <form id="settingsForm">
+        <label>服务商<select id="providerInput" required><option value="deepseek">DeepSeek</option><option value="custom">OpenAI-Compatible</option></select></label>
+        <label>API Base URL<input id="baseUrlInput" type="url" required></label>
+        <label>模型名称<input id="modelInput" type="text" required></label>
+        <label class="switch-row"><span><b>思考模式</b><small>适用于支持 reasoning 的模型</small></span><input id="thinkingInput" type="checkbox"><i></i></label>
+        <div class="key-card">
+          <div><span>API Key</span><strong id="apiKeyMasked">尚未配置</strong></div>
+          <button id="editKeyButton" type="button">修改 API Key</button>
+          <label id="apiKeyEditor" hidden><span class="sr-only">新的 API Key</span><input id="apiKeyInput" type="password" autocomplete="new-password" placeholder="输入新的 API Key"></label>
+        </div>
+        <div class="test-result" id="testResult" hidden></div>
+        <div class="settings-actions">
+          <button class="secondary" id="testConnectionButton" type="button">测试连接</button>
+          <button class="primary" id="saveSettingsButton" type="submit">保存并切换</button>
+        </div>
+      </form>
+      <button class="restore-button" id="restoreDefaultButton" type="button">恢复服务端默认配置</button>
+      <section class="tool-service-card" aria-labelledby="toolServiceTitle">
+        <div class="tool-service-head"><span><b id="toolServiceTitle">工具与服务</b><small>文昌公共资源服务</small></span><i id="toolServiceDot"></i></div>
+        <strong id="toolServiceStatus">正在检查连接</strong>
+        <div class="tool-service-list" id="toolServiceList"><span>公共服务查询</span><span>乡镇资料查询</span><span>研学地点查询</span></div>
+      </section>
+      <section class="diagnostics-card" aria-labelledby="diagnosticsTitle">
+        <div class="diagnostics-head">
+          <div><b id="diagnosticsTitle">系统状态</b><small>检查智能体完成任务所需的各项能力</small></div>
+          <button id="runAgentDiagnosticsButton" type="button">运行智能体自检</button>
+        </div>
+        <div class="diagnostics-grid" id="diagnosticsGrid" aria-live="polite">
+          <div data-diagnostic="model"><span>模型连接</span><b>等待检查</b><small>—</small></div>
+          <div data-diagnostic="rag"><span>知识库</span><b>等待检查</b><small>—</small></div>
+          <div data-diagnostic="webSearch"><span>联网搜索</span><b>等待检查</b><small>—</small></div>
+          <div data-diagnostic="officialSearch"><span>权威检索</span><b>等待检查</b><small>—</small></div>
+          <div data-diagnostic="mcp"><span>MCP 服务</span><b>等待检查</b><small>—</small></div>
+          <div data-diagnostic="word"><span>Word 生成</span><b>等待检查</b><small>—</small></div>
+          <div data-diagnostic="dataExport"><span>数据导出</span><b>等待检查</b><small>—</small></div>
+        </div>
+      </section>
+      <section class="storage-note"><b>数据与隐私</b><p>会话保存在本机 H2 数据库。真实 API Key 仅由后端读取，浏览器只接收脱敏结果。</p></section>
+    </div>
+  </aside>
+
+  <dialog class="agent-detail-dialog" id="agentDetailDialog" aria-labelledby="agentDetailTitle">
+    <div class="agent-detail-panel">
+      <header>
+        <div><span class="eyebrow">智能体能力</span><h2 id="agentDetailTitle">Agent</h2><p id="agentDetailTagline"></p></div>
+        <button class="icon-button" id="agentDetailClose" type="button" aria-label="关闭智能体详情">×</button>
+      </header>
+      <div class="agent-detail-scroll">
+        <section><h3>能做什么</h3><ul id="agentDetailCapabilities"></ul></section>
+        <section><h3>适合输入</h3><div class="detail-chips" id="agentDetailInputs"></div></section>
+        <section><h3>可用技能</h3><div class="detail-chips" id="agentDetailSkills"></div></section>
+        <section><h3>可调用工具</h3><div class="detail-chips subtle" id="agentDetailTools"></div></section>
+        <section><h3>可以生成的文件</h3><div class="detail-chips artifact" id="agentDetailArtifacts"></div></section>
+        <section><h3>典型工作过程</h3><ol class="agent-workflow" id="agentDetailWorkflow"></ol></section>
+        <section class="detail-note"><h3>人工确认</h3><p id="agentDetailApproval"></p></section>
+        <section><h3>示例任务</h3><div class="example-tasks" id="agentDetailExamples"></div></section>
+      </div>
+      <footer><button id="agentDetailStart" type="button">开始使用</button></footer>
+    </div>
+  </dialog>
+
+  <dialog class="skill-detail-dialog" id="skillDetailDialog" aria-labelledby="skillDetailTitle">
+    <div class="skill-detail-panel">
+      <header>
+        <div><span class="eyebrow">技能说明</span><h2 id="skillDetailTitle">Skill</h2><p id="skillDetailDescription"></p></div>
+        <button class="icon-button" id="skillDetailClose" type="button" aria-label="关闭技能说明">×</button>
+      </header>
+      <div class="skill-detail-scroll">
+        <section><h3>适合输入</h3><p id="skillDetailInput"></p></section>
+        <section><h3>任务输出</h3><div class="detail-chips artifact" id="skillDetailOutput"></div></section>
+        <section><h3>执行方式</h3><p id="skillDetailWorkflow"></p></section>
+        <section><h3>使用工具</h3><div class="detail-chips subtle" id="skillDetailTools"></div></section>
+        <section><h3>适用知识</h3><div class="detail-chips" id="skillDetailCategories"></div></section>
+        <section class="detail-note"><h3>确认方式</h3><p id="skillDetailApproval"></p></section>
+      </div>
+      <footer><button id="skillDetailUse" type="button">使用此技能</button></footer>
+    </div>
+  </dialog>
+
+  <dialog class="approval-dialog" id="approvalDialog" aria-labelledby="approvalTitle">
+    <div class="approval-panel">
+      <span class="approval-icon" aria-hidden="true">✓</span>
+      <div><span class="eyebrow">准备执行</span><h2 id="approvalTitle">需要你的确认</h2></div>
+      <button class="icon-button" id="approvalClose" type="button" aria-label="关闭确认窗口">×</button>
+      <dl><div><dt>操作内容</dt><dd id="approvalOperation">—</dd></div><div><dt>影响范围</dt><dd id="approvalScope">—</dd></div></dl>
+      <p id="approvalDescription"></p>
+      <footer><button class="secondary" id="approvalCancel" type="button">取消</button><button class="primary" id="approvalConfirm" type="button">确认执行</button></footer>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" hidden role="status"></div>
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

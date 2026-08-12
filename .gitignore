@@ -1,0 +1,52 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Maven / build outputs
+target/
+target-*/
+**/target/
+**/target-*/
+.m2/
+release/
+
+# Logs and traces
+logs/
+*.log
+*.jsonl
+
+# Secrets and local configuration
+config/local-secrets.properties
+config/deploy-local.properties
+.env
+.env.*
+*.pem
+*.key
+
+# SSH credentials
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Runtime database
+data/chat/
+*.mv.db
+*.trace.db
+
+# Generated runtime data
+data/artifacts/
+data/research/
+data/wenchang-vector-store.json
+data/wenchang-vector-store.json.meta.json
+
+# Runtime / temporary
+tmp/
+temp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

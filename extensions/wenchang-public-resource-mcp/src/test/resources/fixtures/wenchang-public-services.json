@@ -1,0 +1,35 @@
+{
+  "version": "test",
+  "services": [
+    {
+      "id": "svc-library",
+      "sourceId": "SRC-TEST-SERVICE-001",
+      "name": "文昌市图书馆",
+      "category": "culture",
+      "town": "文城镇",
+      "address": "文昌市文城镇",
+      "latitude": 19.61,
+      "longitude": 110.75,
+      "description": "公共阅读服务设施",
+      "serviceScope": "图书借阅与公共文化活动",
+      "sourceOrganization": "文昌市人民政府",
+      "sourceUrl": "https://wenchang.hainan.gov.cn/example/library",
+      "retrievedAt": "2026-08-11"
+    },
+    {
+      "id": "svc-hospital",
+      "sourceId": "SRC-TEST-SERVICE-002",
+      "name": "文昌市人民医院",
+      "category": "medical",
+      "town": "文城镇",
+      "address": "文昌市文城镇",
+      "latitude": 19.62,
+      "longitude": 110.76,
+      "description": "综合医疗服务设施",
+      "serviceScope": "门诊与住院服务",
+      "sourceOrganization": "文昌市卫生健康委员会",
+      "sourceUrl": "https://wenchang.hainan.gov.cn/example/hospital",
+      "retrievedAt": "2026-08-11"
+    }
+  ]
+}

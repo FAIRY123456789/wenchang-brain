@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: wenchang-public-resource-mcp
+  ai:
+    mcp:
+      server:
+        enabled: true
+        protocol: STREAMABLE
+        type: SYNC
+        name: wenchang-public-resource-mcp
+        version: 1.4.0
+        instructions: "提供经过结构化整理的文昌公共服务、乡镇资料和研学地点查询。动态开放状态应以主管单位最新公告为准。"
+        capabilities:
+          tool: true
+          resource: false
+          prompt: false
+          completion: false
+        tool-change-notification: false
+        resource-change-notification: false
+        prompt-change-notification: false
+        streamable-http:
+          mcp-endpoint: /mcp
+        annotation-scanner:
+          enabled: false
+
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8091}
+  shutdown: graceful
+
+management:
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+info:
+  app:
+    name: 文昌公共资源 MCP Server
+    version: 1.4.0
+    protocol: Streamable HTTP
+    endpoint: /mcp
+
+wenchang:
+  public-resource:
+    # 留空时依次探测当前目录 data 与扩展目录相对路径 ../../data。
+    data-root: ${WENCHANG_DATA_ROOT:}
+    public-services-file: ${WENCHANG_PUBLIC_SERVICES_FILE:wenchang-public-services.json}
+    townships-file: ${WENCHANG_TOWNSHIPS_FILE:wenchang-townships.json}
+    places-file: ${WENCHANG_PLACES_FILE:wenchang-places.json}
+    max-results: ${WENCHANG_MCP_MAX_RESULTS:20}
+  artifact:
+    # 留空时写入公共资源 dataRoot 下的 artifacts 目录，使 MCP 与主应用共享文件。
+    root: ${WENCHANG_ARTIFACT_ROOT:}
+    download-base-url: ${WENCHANG_ARTIFACT_DOWNLOAD_BASE_URL:/api/artifacts}
+    policies-file: ${WENCHANG_POLICIES_FILE:wenchang-policies.json}
+    sources-index-file: ${WENCHANG_SOURCES_INDEX_FILE:}
+    max-export-rows: ${WENCHANG_ARTIFACT_MAX_EXPORT_ROWS:5000}
+
+logging:
+  level:
+    cn.wenchang.mcp: INFO

@@ -1,0 +1,27 @@
+[Unit]
+Description=Wenchang Brain Main Application
+After=network-online.target wenchang-mcp.service
+Wants=network-online.target
+Requires=wenchang-mcp.service
+
+[Service]
+Type=simple
+User=wenchang
+Group=wenchang
+WorkingDirectory=/opt/wenchang-brain
+EnvironmentFile=/opt/wenchang-brain/config/runtime.env
+ExecStart=@@JAVA_BIN@@ -Xms128m -Xmx320m -XX:MaxMetaspaceSize=160m -Dfile.encoding=UTF-8 -jar /opt/wenchang-brain/app/current.jar --server.address=127.0.0.1 --server.port=18080 --spring.profiles.active=mcp --spring.config.additional-location=optional:file:/opt/wenchang-brain/config/local-secrets.properties,optional:file:/opt/wenchang-brain/config/mcp-servers.yml "--spring.datasource.url=jdbc:h2:file:/opt/wenchang-brain/data/chat/wenchang-chat;DB_CLOSE_ON_EXIT=FALSE"
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+SuccessExitStatus=143
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/wenchang-brain/data /opt/wenchang-brain/logs
+MemoryMax=560M
+LimitNOFILE=16384
+
+[Install]
+WantedBy=multi-user.target

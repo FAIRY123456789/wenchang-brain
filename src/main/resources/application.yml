@@ -1,0 +1,78 @@
+spring:
+  application:
+    name: wenchang-brain-v1.5
+  config:
+    import:
+      - optional:file:./config/local-secrets.properties
+      - optional:file:./config/mcp-servers.yml
+  datasource:
+    url: jdbc:h2:file:./data/chat/wenchang-chat;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  ai:
+    mcp:
+      client:
+        # 未配置 MCP Server 时不创建连接、不阻塞启动；复制示例配置后再显式开启。
+        enabled: false
+        type: SYNC
+        request-timeout: 20s
+        toolcallback:
+          enabled: true
+    model:
+      # 对话模型通过设置抽屉在运行时注入；知识库向量化始终使用本地嵌入模型。
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+
+server:
+  port: ${SERVER_PORT:8080}
+
+wenchang:
+  version: V1.5
+  knowledge-dir: ${WENCHANG_KNOWLEDGE_DIR:knowledge}
+  vector-store-file: ${WENCHANG_VECTOR_STORE_FILE:data/wenchang-vector-store.json}
+  official-source-registry-file: ${WENCHANG_OFFICIAL_SOURCE_REGISTRY_FILE:data/official-source-registry.json}
+  places-file: ${WENCHANG_PLACES_FILE:data/wenchang-places.json}
+  policies-file: ${WENCHANG_POLICIES_FILE:data/wenchang-policies.json}
+  public-services-file: ${WENCHANG_PUBLIC_SERVICES_FILE:data/wenchang-public-services.json}
+  trace-file: ${WENCHANG_TRACE_FILE:logs/agent-trace.jsonl}
+  artifact:
+    root: ${WENCHANG_ARTIFACT_ROOT:data/artifacts}
+  research-dir: ${WENCHANG_RESEARCH_DIR:data/research}
+  top-k: 6
+  similarity-threshold: 0.15
+  web-search:
+    enabled: true
+    provider: ${WENCHANG_SEARCH_PROVIDER:auto}
+    endpoint: ${WENCHANG_SEARCH_ENDPOINT:https://www.sogou.com/web}
+    api-key: ${WENCHANG_SEARCH_API_KEY:}
+    tavily-api-key: ${WENCHANG_TAVILY_API_KEY:}
+    tavily-endpoint: ${WENCHANG_TAVILY_ENDPOINT:https://api.tavily.com/search}
+    brave-api-key: ${WENCHANG_BRAVE_API_KEY:}
+    brave-endpoint: ${WENCHANG_BRAVE_ENDPOINT:https://api.search.brave.com/res/v1/web/search}
+    fallback-order: ${WENCHANG_SEARCH_FALLBACK_ORDER:tavily,brave}
+    allow-html-fallback: ${WENCHANG_SEARCH_ALLOW_HTML_FALLBACK:false}
+    cache-ttl-seconds: ${WENCHANG_SEARCH_CACHE_TTL_SECONDS:300}
+    circuit-failure-threshold: ${WENCHANG_SEARCH_CIRCUIT_FAILURE_THRESHOLD:3}
+    circuit-cooldown-seconds: ${WENCHANG_SEARCH_CIRCUIT_COOLDOWN_SECONDS:60}
+    timeout-seconds: ${WENCHANG_SEARCH_TIMEOUT_SECONDS:25}
+  ai:
+    default:
+      provider: ${WENCHANG_AI_DEFAULT_PROVIDER:deepseek}
+      base-url: ${WENCHANG_AI_DEFAULT_BASE_URL:https://api.deepseek.com}
+      api-key: ${WENCHANG_AI_DEFAULT_API_KEY:}
+      model: ${WENCHANG_AI_DEFAULT_MODEL:deepseek-chat}
+      thinking-enabled: ${WENCHANG_AI_DEFAULT_THINKING_ENABLED:false}
+
+logging:
+  level:
+    cn.wenchang.brain: INFO
