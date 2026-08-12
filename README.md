@@ -94,6 +94,8 @@ Agent 可以生成 Word、Excel 与 CSV。文件生成成功后，统一的 `Art
 
 `extensions/wenchang-public-resource-mcp` 是独立 Spring AI Streamable HTTP Server，默认运行于 `127.0.0.1:8091/mcp`。前三个工具提供公共服务、乡镇画像和研学地点查询；四个生产工具生成 Word、CSV/XLSX、研学方案和政策简报。主应用通过 Spring AI MCP Client 动态 `tools/list`，MCP 断开不会被误报为联网搜索故障。
 
+生成型 Artifact 使用面向读者的内容模板：Word 会将结构化资料整理成专业标题、正文层级、名单表格、核验提示与去重来源，不写入工具 JSON 或原始指令；Excel 使用中文表头、标题区、筛选、冻结窗格、适配列宽与可点击来源；CSV 使用 UTF-8 BOM 和中文表头。生成成功后，聊天回答会直接附带 Markdown 下载超链接，并保留文件卡片与历史恢复。
+
 ## Markdown Rendering
 
 Assistant 内容唯一经过本地 `marked` 与 `DOMPurify`：`marked.parse → DOMPurify.sanitize → DOM`。SSE 使用 `rawMarkdownBuffer` 与短 debounce 增量重绘，complete 事件做最终完整渲染；历史消息与刷新恢复走同一 Renderer。支持 H1-H4、粗体、斜体、列表、链接、引用、行内代码、代码块、表格和分隔线；外链统一使用 `target=_blank` 与 `rel=noopener noreferrer`，页面不依赖 CDN。

@@ -2,6 +2,20 @@
 
 这里只记录本轮真实启动和回归过程中出现过的问题。
 
+## 32. Artifact 把 MCP JSON 和原始指令写进 Word（2026-08-12）
+
+- 现象：Word 标题接近原始提示词，正文出现 `searchPublicServices` 与双重转义 JSON；小学、学院等无关记录混入“高中名单”，来源列表还出现与名单无关的地理编码查询链接。
+- Root Cause：通用报告参数使用 `augmentWithToolResults()`，把整个工具协议结果作为正文；标题只做关键词删除；来源退回 RAG 来源而非名单记录自身来源。
+- 修复：新增结构化 Artifact Composer，递归解包 MCP wrapper，按任务条件筛选行、生成专业标题和人类可读 Markdown 表格，并以最终记录的 `sourceOrganization/sourceUrl` 构造来源。Word Writer 再加协议 JSON 防漏过滤。
+- 验证：包装 JSON 测试能提取文昌中学并排除小学/学院；Word 中无 `tool/results` JSON，存在表格、来源与核验提示。
+- 生产补充：首轮真实任务只命中文昌华侨中学。原因是资源关键词先匹配到泛化“学校”，同时过滤规则把“清华大学附属中学文昌学校”误判为高校。现将高中/初中请求优先改写为“中学”，并仅排除名称以“大学/学院”结尾的独立高校。
+
+## 33. 生成文件只能点卡片，回答正文没有下载链接（2026-08-12）
+
+- 现象：文件卡片可以下载，但模型回答正文没有可点击链接，不符合用户阅读习惯。
+- 修复：主应用取得真实 ArtifactDescriptor 后，在最终 Markdown 追加 `/wenchang-brain/api/artifacts/{id}/download` 超链接；MarkdownRenderer 统一渲染为安全的新窗口链接。
+- 验证：链接结构契约通过，并保留 Artifact 卡片作为第二入口。
+
 ## 1. 受限 Windows 环境中 JDK HttpClient 阻断应用启动
 
 - 问题：首次启动在创建 `WebSearchTool` 时失败。

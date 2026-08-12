@@ -43,10 +43,11 @@ public class ProductionArtifactTools {
             @ToolParam(description = "创建文件的 Agent ID", required = false) String createdByAgent,
             @ToolParam(description = "触发文件生成的 Skill ID", required = false) String skillId) {
         List<String> normalizedSources = distinct(sources);
-        String filename = filename(title, "文昌专题报告", ".docx");
+        String reportTitle = professionalTitle(title, topic, content);
+        String filename = filename(reportTitle, "文昌专题报告", ".docx");
         ArtifactManifest manifest = artifactStore.create(conversationId, "WORD", filename, DOCX_CONTENT_TYPE,
                 createdByAgent, skillId, normalizedSources.size(),
-                path -> wordWriter.write(path, title, topic, content, normalizedSources));
+                path -> wordWriter.write(path, reportTitle, topic, content, normalizedSources));
         return result(manifest, "Word 报告已生成，可直接打开或下载。", normalizedSources.size());
     }
 
@@ -67,12 +68,14 @@ public class ProductionArtifactTools {
             throw new IllegalArgumentException("format must be csv or xlsx");
         }
         TaskDatasetRepository.ExportDataset dataset = datasets.export(datasetType, fields, filters);
-        String filename = filename("文昌" + datasetLabel(dataset.type()) + "数据", "文昌数据", "." + normalizedFormat);
+        String exportTitle = exportTitle(dataset.type(), filters);
+        String filename = filename(exportTitle, "文昌数据清单", "." + normalizedFormat);
         String contentType = normalizedFormat.equals("csv") ? "text/csv;charset=UTF-8" : XLSX_CONTENT_TYPE;
         ArtifactManifest manifest = artifactStore.create(conversationId, normalizedFormat.toUpperCase(Locale.ROOT),
                 filename, contentType, createdByAgent, skillId, 0, path -> {
                     if (normalizedFormat.equals("csv")) tabularWriter.writeCsv(path, dataset.fields(), dataset.rows());
-                    else tabularWriter.writeXlsx(path, dataset.fields(), dataset.rows());
+                    else tabularWriter.writeXlsx(path, exportTitle,
+                            dataset.fields(), dataset.rows());
                 });
         return result(manifest, "已导出 " + dataset.rows().size() + " 行" + datasetLabel(dataset.type()) + "数据。", 0);
     }
@@ -197,6 +200,25 @@ public class ProductionArtifactTools {
         return base.endsWith(suffix) ? base : base + suffix;
     }
 
+    private String professionalTitle(String title, String topic, String content) {
+        String combined = String.join(" ", defaultText(title, ""), defaultText(topic, ""), defaultText(content, ""));
+        if (combined.matches("(?s).*(高中|高一|高二|高三).*(名单|学校|教育).*")) {
+            return "文昌市高中阶段学校名单与信息核验报告";
+        }
+        if (combined.matches("(?s).*(学校|教育).*(名单|报告).*")) return "文昌市教育资源整理报告";
+        if (combined.matches("(?s).*(政策).*(名单|清单|报告|简报).*")) {
+            String subject = defaultText(topic, "").replaceAll("(?i)(政策研究|证据整理|文昌|海南|政策)", "")
+                    .replaceAll("[。！!，,;；]+$", "").replaceAll("\\s+", " ").trim();
+            return subject.isBlank() ? "文昌市相关政策整理报告" : "文昌" + subject + "政策简报";
+        }
+        String value = defaultText(title, "文昌专题研究报告")
+                .replaceAll("(?i)(请你|请|帮我|必须|实际|生成|导出|可下载|word|docx|文档)", " ")
+                .replaceAll("[。！!，,;；]+$", "").replaceAll("\\s+", " ").trim();
+        if (value.isBlank()) return "文昌专题研究报告";
+        int count = Math.min(30, value.codePointCount(0, value.length()));
+        return value.substring(0, value.offsetByCodePoints(0, count));
+    }
+
     private String datasetLabel(String type) {
         return switch (type) {
             case "places" -> "研学地点";
@@ -205,6 +227,18 @@ public class ProductionArtifactTools {
             case "sources" -> "来源";
             default -> "";
         };
+    }
+
+    private String exportTitle(String type, Map<String, Object> filters) {
+        String category = filters == null ? "" : String.valueOf(filters.getOrDefault("category", ""));
+        String name = filters == null ? "" : String.valueOf(filters.getOrDefault("name", ""));
+        if ("publicServices".equals(type) && "education".equalsIgnoreCase(category) && name.contains("中学")) {
+            return "文昌高中阶段学校候选清单";
+        }
+        if ("publicServices".equals(type) && "education".equalsIgnoreCase(category) && name.contains("小学")) {
+            return "文昌小学教育资源清单";
+        }
+        return "文昌" + datasetLabel(type) + "数据清单";
     }
 
     private List<String> distinct(List<String> values) {

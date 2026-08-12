@@ -1,6 +1,7 @@
 package cn.wenchang.brain.service;
 
 import cn.wenchang.brain.artifact.ArtifactService;
+import cn.wenchang.brain.artifact.ArtifactReportComposer;
 import cn.wenchang.brain.agent.AgentProfile;
 import cn.wenchang.brain.agent.AgentProfileRegistry;
 import cn.wenchang.brain.agent.CapabilityRouter;
@@ -59,6 +60,7 @@ public class WenchangAgentService {
     private final AgentRunPersistenceService agentRunPersistenceService;
     private final AgentApprovalService agentApprovalService;
     private final ArtifactService artifactService;
+    private final ArtifactReportComposer artifactReportComposer;
     private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
 
     public WenchangAgentService(RuntimeChatModelProvider modelProvider, RagService ragService,
@@ -70,7 +72,8 @@ public class WenchangAgentService {
                                 PlaceSearchTool placeSearchTool,
                                 AgentRunPersistenceService agentRunPersistenceService,
                                 AgentApprovalService agentApprovalService,
-                                ArtifactService artifactService) {
+                                ArtifactService artifactService,
+                                ArtifactReportComposer artifactReportComposer) {
         this.modelProvider = modelProvider;
         this.ragService = ragService;
         this.capabilityRouter = capabilityRouter;
@@ -85,6 +88,7 @@ public class WenchangAgentService {
         this.agentRunPersistenceService = agentRunPersistenceService;
         this.agentApprovalService = agentApprovalService;
         this.artifactService = artifactService;
+        this.artifactReportComposer = artifactReportComposer;
     }
 
     public ChatResponseDto chat(String message, String requestedSessionId) {
@@ -270,7 +274,7 @@ public class WenchangAgentService {
         long totalLatency = (System.nanoTime() - totalStarted) / 1_000_000;
         List<ArtifactDescriptor> artifacts = artifactService.descriptorsByIds(artifactIds);
         boolean artifactToolCalled = toolsUsed.stream().anyMatch(this::isArtifactTool);
-        answer = enforceArtifactTruth(answer, artifactToolCalled, artifacts);
+        answer = appendArtifactLinks(enforceArtifactTruth(answer, artifactToolCalled, artifacts), artifacts);
         artifacts.forEach(artifact -> emit(eventConsumer, "artifact_created", artifactEvent(artifact)));
         if (!artifacts.isEmpty()) {
             RunStepState artifactStep = runSteps.stream().filter(item ->
@@ -413,14 +417,10 @@ public class WenchangAgentService {
                     "ageGroup", extractAgeGroup(message));
             case "collectOfficialMaterials" -> Map.of("topic", message,
                     "categories", List.of(dominantTheme(message)), "maxSources", 8);
-            case "createWenchangWordReport" -> Map.of(
-                    "title", artifactTitle(message, "文昌专题报告"), "topic", dominantTheme(message),
-                    "content", augmentWithToolResults(message, priorOutputs),
-                    "sources", sources.stream().map(cn.wenchang.brain.model.SourceRef::sourceUrl)
-                            .filter(url -> url != null && !url.isBlank()).distinct().toList(),
-                    "conversationId", conversationId, "createdByAgent", agentId, "skillId", skillId);
+            case "createWenchangWordReport" -> wordReportArguments(message, conversationId, agentId, skillId,
+                    priorOutputs, sources);
             case "exportWenchangData" -> Map.of("datasetType", datasetType(message), "fields", List.of(),
-                    "filters", Map.of(), "format", message.toLowerCase(Locale.ROOT).contains("csv") ? "csv" : "xlsx",
+                    "filters", exportFilters(message), "format", message.toLowerCase(Locale.ROOT).contains("csv") ? "csv" : "xlsx",
                     "conversationId", conversationId, "createdByAgent", agentId, "skillId", skillId);
             case "createStudyTourPackage" -> Map.of("ageGroup", extractAgeGroup(message),
                     "duration", extractDuration(message), "themes", List.of(dominantTheme(message)),
@@ -440,6 +440,17 @@ public class WenchangAgentService {
         return "places";
     }
 
+    private Map<String, Object> exportFilters(String message) {
+        Map<String, Object> filters = new LinkedHashMap<>();
+        String town = extractTown(message);
+        if (!town.isBlank()) filters.put("town", town);
+        if (message.matches(".*(学校|教育|高中|初中|小学).*")) filters.put("category", "education");
+        if (message.matches(".*(高中|高一|高二|高三|初中|中学).*")) filters.put("name", "中学");
+        else if (message.matches(".*(小学|小学生).*")) filters.put("name", "小学");
+        else if (message.matches(".*(医院|医疗|卫生).*")) filters.put("category", "medical");
+        return Map.copyOf(filters);
+    }
+
     private String extractDuration(String message) {
         if (message.matches(".*(半天|半日).*")) return "半天";
         if (message.matches(".*(两天|2天|二日|两日).*")) return "两天";
@@ -455,11 +466,29 @@ public class WenchangAgentService {
     }
 
     private String artifactTitle(String message, String fallback) {
-        String value = message.replaceAll("(请|帮我|生成|导出|一份|一个|Word|word|文档|报告)", " ")
-                .replaceAll("\\s+", " ").trim();
-        if (value.isBlank()) return fallback;
-        int length = Math.min(32, value.codePointCount(0, value.length()));
-        return value.substring(0, value.offsetByCodePoints(0, length));
+        String title = artifactReportComposer.professionalTitle(message);
+        return title == null || title.isBlank() ? fallback : title;
+    }
+
+    private Map<String, Object> wordReportArguments(String message, String conversationId,
+                                                     String agentId, String skillId,
+                                                     Map<String, String> priorOutputs,
+                                                     List<cn.wenchang.brain.model.SourceRef> ragSources) {
+        ArtifactReportComposer.ComposedReport report = artifactReportComposer.compose(message, priorOutputs);
+        List<String> reportSources = report.sources();
+        if (reportSources.isEmpty()) {
+            reportSources = ragSources.stream().map(cn.wenchang.brain.model.SourceRef::sourceUrl)
+                    .filter(url -> url != null && !url.isBlank()).distinct().toList();
+        }
+        Map<String, Object> arguments = new LinkedHashMap<>();
+        arguments.put("title", report.title());
+        arguments.put("topic", report.topic());
+        arguments.put("content", report.content());
+        arguments.put("sources", reportSources);
+        arguments.put("conversationId", conversationId);
+        arguments.put("createdByAgent", agentId);
+        arguments.put("skillId", skillId);
+        return Map.copyOf(arguments);
     }
 
     private String studyTourPlan(String message) {
@@ -588,6 +617,23 @@ public class WenchangAgentService {
                 + "\n\n> 文件成果未完成：系统没有取得可下载的 Artifact，请稍后重试。";
     }
 
+    static String appendArtifactLinks(String value, List<ArtifactDescriptor> artifacts) {
+        String answer = value == null ? "" : value.trim();
+        if (artifacts == null || artifacts.isEmpty()) return answer;
+        StringBuilder links = new StringBuilder("\n\n## 已生成文件\n");
+        for (ArtifactDescriptor artifact : artifacts) {
+            String name = (artifact.displayName() == null || artifact.displayName().isBlank())
+                    ? artifact.filename() : artifact.displayName();
+            String label = (name == null ? "下载任务文件" : name).replace("[", "［").replace("]", "］");
+            String url = artifact.downloadUrl();
+            if (url == null || url.isBlank()) url = "/api/artifacts/" + artifact.id() + "/download";
+            links.append("- [下载 ").append(label).append("](").append(url).append(")");
+            if (artifact.sourceCount() > 0) links.append(" · ").append(artifact.sourceCount()).append(" 个来源");
+            links.append('\n');
+        }
+        return answer + links;
+    }
+
     private Map<String, Object> artifactEvent(ArtifactDescriptor artifact) {
         return mapper.convertValue(artifact, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() { });
     }
@@ -619,6 +665,8 @@ public class WenchangAgentService {
     }
 
     private String resourceKeyword(String message) {
+        if (message.matches(".*(高中|高一|高二|高三|初中|中学).*")) return "中学";
+        if (message.matches(".*(小学|小学生).*")) return "小学";
         for (String keyword : List.of("医院", "学校", "图书馆", "文化馆", "博物馆", "体育", "政务服务",
                 "交通", "应急", "公共安全", "科研", "科普")) if (message.contains(keyword)) return keyword;
         return "";

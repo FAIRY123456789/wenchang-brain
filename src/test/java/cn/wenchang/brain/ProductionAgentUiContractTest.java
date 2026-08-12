@@ -52,6 +52,7 @@ class ProductionAgentUiContractTest {
                 "function refreshConversationArtifacts(conversationId, preferredElement = null)");
         assertThat(app).contains("artifact-name", "artifact-meta", "artifact-download", "下载文件")
                 .contains("appUrl(`/api/artifacts/${encodeURIComponent")
+                .contains("function safeArtifactUrl(value)")
                 .contains("artifactCount ? ` · ${artifactCount} 个文件`");
         assertThat(app).contains("/api/agent/approvals/${encodeURIComponent(id)}");
         assertThat(css).contains(

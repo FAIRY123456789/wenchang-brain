@@ -1,5 +1,12 @@
 # PROJECT SUPERVISOR
 
+## 2026-08-12 · Artifact 人类可读模板与回答下载链接
+
+- Root Cause：通用 Word 路径把 MCP 包装 JSON 和原始用户指令直接拼入正文；标题仅机械删除少量动词，导致命令式长标题、无关记录与 JSON 协议内容。XLSX/CSV 也直接暴露英文字段名。
+- 修复：新增 `ArtifactReportComposer`，递归解包 MCP 返回，按任务筛选记录、归纳专业标题、生成名单表格和核验说明，并只保留记录自身来源；Word Writer 增加统一标题层级、正文节奏、表格、来源说明与时间；XLSX 增加中文标题/表头、筛选、冻结窗格、链接和列宽；CSV 改为中文表头。
+- 下载体验：Artifact 成功后，最终 Markdown 回答直接追加 `[下载 文件名](downloadUrl)`；文件卡片、SSE `artifact_created`、消息/Agent Run 持久化与刷新恢复继续保留。
+- 回归：主应用 83/83 PASS，MCP 7/7 PASS；DOCX/XLSX 经 Apache POI 重新打开，CSV UTF-8 BOM 与中文表头通过。本机没有 LibreOffice/soffice，因此未执行 DOCX 页面 PNG 渲染，结构与内容验收通过。生产首轮样例进一步发现“高中”被泛化为“学校”且附属中学校名因含“大学”被误排除，现已改为“中学”定向检索并仅排除以大学/学院结尾的独立高校。
+
 ## 2026-08-12 · Artifact Download Closure
 
 - Root Cause：DeepSeek 自主调用 Artifact MCP Tool 时可在 JSON 参数中生成语义化 `conversationId`；主应用只在 `ToolContext` 保存真实会话 UUID，远端 MCP 实际收到的仍是模型参数，因此文件写入错误会话目录。主应用随后按真实 UUID 查询为空，导致 Chat Response、SSE、Message 与前端文件卡全部缺失。

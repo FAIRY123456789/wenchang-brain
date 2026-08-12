@@ -8,23 +8,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 class ProductionArtifactToolsTest {
 
-    @TempDir Path temporaryDirectory;
+    private Path temporaryDirectory;
 
     private ProductionArtifactTools tools;
     private ArtifactStore store;
 
     @BeforeEach
     void setUp() {
+        temporaryDirectory = Path.of("target", "test-artifacts", "production-tools", UUID.randomUUID().toString());
         PublicResourceProperties dataProperties = new PublicResourceProperties();
         dataProperties.setDataRoot(Path.of("src/test/resources/fixtures"));
         DataAssetRepository dataRepository = new DataAssetRepository(dataProperties);
@@ -41,7 +42,7 @@ class ProductionArtifactToolsTest {
     @Test
     void generatesReadableChineseWordAndManifest() throws Exception {
         var result = tools.createWenchangWordReport("文昌商业航天政策简报", "商业航天",
-                "## 核心内容\n正文支持中文。\n- 项目一\n1. 第一项",
+                "## 核心内容\n正文支持中文。\n\n| 序号 | 项目 | 说明 |\n|---:|---|---|\n|1|项目一|公开资料|",
                 List.of("文昌市人民政府 - https://wenchang.hainan.gov.cn/"), "conversation-001",
                 "policy", "policy-brief");
 
@@ -53,7 +54,10 @@ class ProductionArtifactToolsTest {
             assertThat(document.getDocument().getBody().getSectPr().isSetPgMar()).isTrue();
             String text = document.getParagraphs().stream().map(paragraph -> paragraph.getText())
                     .reduce("", (left, right) -> left + "\n" + right);
-            assertThat(text).contains("文昌商业航天政策简报", "核心内容", "正文支持中文", "来源", "文昌市人民政府");
+            assertThat(text).contains("文昌商业航天政策简报", "核心内容", "正文支持中文", "来源与核验", "文昌市人民政府")
+                    .doesNotContain("{\"tool\"");
+            assertThat(document.getTables()).hasSize(1);
+            assertThat(document.getTables().get(0).getRow(1).getCell(1).getText()).contains("项目一");
         }
         ArtifactManifest manifest = manifest(result.artifactId());
         assertThat(manifest.filename()).isEqualTo("文昌商业航天政策简报.docx");
@@ -66,17 +70,24 @@ class ProductionArtifactToolsTest {
         var csv = tools.exportWenchangData("places", List.of("name", "sourceUrl"),
                 Map.of("town", "龙楼"), "csv", "conversation-002", "study-tour", "data-export");
         String csvText = Files.readString(artifactFile(csv.artifactId()), StandardCharsets.UTF_8);
-        assertThat(csvText).startsWith("\uFEFFname,sourceUrl").contains("文昌", "https://");
+        assertThat(csvText).startsWith("\uFEFF名称,原始来源").contains("文昌", "https://");
 
         var xlsx = tools.exportWenchangData("places", List.of("name", "town", "sourceUrl"),
                 Map.of("town", "龙楼"), "xlsx", "conversation-002", "study-tour", "data-export");
         try (XSSFWorkbook workbook = new XSSFWorkbook(Files.newInputStream(artifactFile(xlsx.artifactId())))) {
             var sheet = workbook.getSheetAt(0);
-            assertThat(sheet.getRow(0).getCell(0).getStringCellValue()).isEqualTo("name");
-            assertThat(sheet.getLastRowNum()).isGreaterThan(0);
-            assertThat(sheet.getRow(1).getCell(0).getStringCellValue()).contains("文昌");
-            assertThat(sheet.getRow(1).getCell(2).getHyperlink()).isNotNull();
+            assertThat(sheet.getRow(0).getCell(0).getStringCellValue()).isEqualTo("文昌研学地点数据清单");
+            assertThat(sheet.getRow(3).getCell(0).getStringCellValue()).isEqualTo("名称");
+            assertThat(sheet.getLastRowNum()).isGreaterThan(3);
+            assertThat(sheet.getRow(4).getCell(0).getStringCellValue()).contains("文昌");
+            assertThat(sheet.getRow(4).getCell(2).getHyperlink()).isNotNull();
+            assertThat(sheet.getPaneInformation()).isNotNull();
         }
+
+        var schools = tools.exportWenchangData("publicServices", List.of("name", "town", "sourceUrl"),
+                Map.of("category", "education", "name", "中学"), "xlsx", "conversation-002",
+                "wenchang", "data-export");
+        assertThat(schools.filename()).isEqualTo("文昌高中阶段学校候选清单.xlsx");
     }
 
     @Test
