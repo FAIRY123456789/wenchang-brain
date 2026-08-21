@@ -4,6 +4,10 @@
   const STORAGE_KEY = 'wenchang-system-language';
   const DEFAULT_LANGUAGE = 'zh-CN';
   const SUPPORTED = ['zh-CN', 'en', 'id', 'ar', 'pt'];
+  const LANGUAGE_NAMES = {
+    'zh-CN': '中文', en: 'English', id: 'Bahasa Indonesia', ar: 'العربية', pt: 'Português'
+  };
+  let activeLanguage = DEFAULT_LANGUAGE;
 
   const zh = {
     'meta.title': '文昌智脑 · 从海岸向星辰提问',
@@ -372,9 +376,15 @@
     return SUPPORTED.includes(short) ? short : DEFAULT_LANGUAGE;
   }
 
-  function getLanguage() {
+  function readStoredLanguage() {
     try { return normalizeLanguage(localStorage.getItem(STORAGE_KEY)); }
     catch { return DEFAULT_LANGUAGE; }
+  }
+
+  activeLanguage = readStoredLanguage();
+
+  function getLanguage() {
+    return activeLanguage;
   }
 
   function interpolate(value, variables) {
@@ -407,16 +417,36 @@
     root.querySelectorAll('[data-i18n-prompt]').forEach((element) => {
       element.dataset.prompt = t(element.dataset.i18nPrompt, null, language);
     });
+    const select = document.getElementById('languageInput');
+    if (select) select.value = language;
+    document.querySelectorAll('[data-language-value]').forEach((button) => {
+      const selected = button.dataset.languageValue === language;
+      button.classList.toggle('is-active', selected);
+      button.setAttribute('aria-checked', String(selected));
+    });
+    const live = document.getElementById('languageLive');
+    if (live) live.textContent = `✓ ${LANGUAGE_NAMES[language]}`;
     return language;
   }
 
   function setLanguage(value) {
     const language = normalizeLanguage(value);
+    activeLanguage = language;
     try { localStorage.setItem(STORAGE_KEY, language); } catch { /* private browsing */ }
     apply(document);
     window.dispatchEvent(new CustomEvent('wenchang:languagechange', {detail: {language}}));
     return language;
   }
+
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-language-value]');
+    if (!button) return;
+    setLanguage(button.dataset.languageValue);
+  });
+
+  document.addEventListener('change', (event) => {
+    if (event.target?.id === 'languageInput') setLanguage(event.target.value);
+  });
 
   window.WenchangI18n = Object.freeze({
     supported: Object.freeze([...SUPPORTED]),

@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "wenchang.vector-store-file=target/test-data/wenchang-vector-store.json",
         "wenchang.trace-file=target/test-logs/agent-trace.jsonl",
+        "wenchang.ai.default.api-key=",
         "wenchang.web-search.enabled=false"
 })
 class WenchangBrainIntegrationTest {

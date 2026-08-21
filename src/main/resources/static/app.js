@@ -121,7 +121,6 @@ $('editKeyButton').addEventListener('click', () => {
 $('testConnectionButton').addEventListener('click', testConnection);
 $('restoreDefaultButton').addEventListener('click', restoreDefault);
 $('runAgentDiagnosticsButton').addEventListener('click', runAgentDiagnostics);
-languageInput.addEventListener('change', () => i18n?.setLanguage(languageInput.value));
 $('agentDetailClose').addEventListener('click', closeAgentDetail);
 $('agentDetailStart').addEventListener('click', startWithDetailedAgent);
 $('skillDetailClose').addEventListener('click', closeSkillDetail);
