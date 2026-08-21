@@ -9,7 +9,7 @@ $stage = Join-Path $releaseRoot $ReleaseId
 $archive = Join-Path $releaseRoot ($ReleaseId + '.tar.gz')
 $mainJar = Join-Path $repo 'target/wenchang-brain-1.5.0-SNAPSHOT.jar'
 $mcpJar = Join-Path $repo 'extensions/wenchang-public-resource-mcp/target/wenchang-public-resource-mcp-1.4.0-SNAPSHOT.jar'
-$gitCommit = (& git -C $repo rev-parse HEAD).Trim()
+$gitCommit = (& git -c "safe.directory=$($repo.Replace('\', '/'))" -C $repo rev-parse HEAD).Trim()
 
 if (-not (Test-Path -LiteralPath $mainJar -PathType Leaf)) { throw "Main JAR missing: $mainJar" }
 if (-not (Test-Path -LiteralPath $mcpJar -PathType Leaf)) { throw "MCP JAR missing: $mcpJar" }
