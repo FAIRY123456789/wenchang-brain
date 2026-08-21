@@ -248,3 +248,12 @@
 - 原因：Artifact 会话归属修复最初按 `toolSource=MCP` 统一注入字段，没有区分查询型 Tool 和成果型 Tool。
 - 修复：上下文覆盖只作用于 `createWenchangWordReport / exportWenchangData / createStudyTourPackage / createPolicyBrief`；查询 Tool 输入保持原始 schema。明确文件意图由编排器确定性追加成果 Tool。
 - 回归：新增查询输入不变测试与 Skill Artifact 路由测试；生产真实调用工具序列为 `searchPublicServices, createWenchangWordReport`，Agent Run `COMPLETED`，文件数 1。
+
+## 32. 公网语言点击后界面保持中文
+
+- 问题：正式公网设置页可以选择 English、Bahasa Indonesia、العربية 或 Português，但部分浏览器点击后页面仍显示中文。
+- 根因：旧实现把 `localStorage` 同时当成持久层和当前状态源。写入在隐私/内嵌/受限浏览器中失败后被捕获，随后渲染又重新读取存储并得到默认 `zh-CN`；同时旧静态资源文件名不变，公网缓存会放大“代码已部署但页面无变化”的感知。
+- 修复：以进程内 `activeLanguage` 作为当前页面事实源，切换顺序固定为“更新内存 → 尽力持久化 → 渲染 → 发布事件”；为 CSS/JS 增加发布版本参数；去除 `app.js` 的重复 change listener。
+- UI：语言入口改为玻璃质感五语按钮组，具有选中勾选、键盘焦点、ARIA radio 状态、移动适配与 RTL 布局。
+- 回归：在本地存储读写均抛错的模拟环境中，英语、阿拉伯语、葡语切换与 RTL 均 PASS；Maven 85/85 PASS；ECS canary 与公网 HTML/JS/CSS 均返回新版本标记，生产服务 NRestarts=0。
+- 当前状态：已部署 Release `1.5.1-language-ui-fix-20260821`；可视化浏览器自动控制因本机沙箱组件故障未执行，未虚报为通过。

@@ -162,3 +162,16 @@
 - 生产健康：DeepSeek=`REMOTE_DEFAULT / deepseek-chat`，RAG=`READY`，VectorStore=`LOADED`，50 files / 136 chunks；本轮不额外消耗 DeepSeek 或 Tavily 额度，因为语言功能不改变服务端 AI 链路。
 - 公网验收：`/wenchang-brain/`、五语脚本、主脚本、样式、Health、Agent、Skill、Conversation 均 HTTP 200；既有 `/` 和 `/future-bay-eco-lab/` 均保持 HTTP 200；Nginx `-t` PASS。
 - Secret 与回滚：生产 Secret 文件保持 `0600 wenchang:wenchang` 且未输出内容；预切换回滚点为 `/opt/wenchang-brain/backups/predeploy-i18n-20260821T080553Z.properties`，部署回滚元数据为 `/opt/wenchang-brain/backups/rollback-20260821T080553Z.properties`。
+
+## 2026-08-21 · 公网语言切换可靠性与设置 UI 修复
+
+- 真实 Root Cause：旧版 `setLanguage()` 尝试写入 `localStorage` 后，`apply()` 又通过 `getLanguage()` 重新读取存储。在隐私模式、内嵌浏览器或受限公网环境中，存储写入异常被安全捕获，但二次读取回到默认 `zh-CN`，造成用户点击语言后界面看似没有变化。
+- 运行时修复：新增进程内 `activeLanguage` 作为当前语言唯一事实源；切换时先更新内存状态，再尽力持久化，最后统一渲染并发出 `wenchang:languagechange`。即使本地存储读写均不可用，当前页面仍立即切换；存储可用时继续支持刷新恢复。
+- UI 修复：原生下拉框升级为与系统一致的玻璃质感语言卡片，五种语言采用可访问 radio button 语义、选中勾选、Hover/Focus 状态、移动端双列布局，并继续保留隐藏原生 select 作为兼容契约；阿拉伯语 RTL 同步覆盖按钮布局。
+- 缓存修复：`styles.css`、`i18n.js`、`app.js` 使用 `v=1.5.1-language-ui` 版本查询参数，确保公网部署后不继续命中旧静态资源。
+- 本地验收：Node 语法 PASS；模拟 `localStorage.getItem/setItem` 同时抛错时，English、العربية、Português 切换、RTL、选中状态、事件和动态文案全部 PASS；Maven clean package 85/85 PASS，且测试显式清空模型 Key，未消耗 DeepSeek/Tavily 额度。
+- Release：`1.5.1-language-ui-fix-20260821`，Git=`0dc30e831830cc548d42aee29c0bd14fa78855cc`，归档 SHA-256=`822a435f56b5e50a001bd4ea9762e995a367624142993a8460ad3bb1a1c23540`。
+- 生产验收：隔离 canary `127.0.0.1:18082` 在无 Secret、无 MCP、无 Search 状态下 Health 与版本化 HTML/JS/CSS PASS，验收后关闭；正式 symlink 已切换至新 Release，Main/MCP/Nginx 均 active，NRestarts=0，18080/18091 继续仅监听 loopback。
+- 公网状态：`http://120.26.238.159/wenchang-brain/` 返回新版语言控件及版本化资源 HTTP 200；DeepSeek=`REMOTE_DEFAULT/deepseek-chat`，RAG=50 files/136 chunks，MCP Health=UP；已有 `/` 与 `/future-bay-eco-lab/` 仍为 HTTP 200。
+- 回滚：`/opt/wenchang-brain/backups/rollback-20260821T121238Z.properties`。生产 Secret 内容未读取、未输出，权限策略未改变。
+- 浏览器说明：桌面应用的可视化浏览器控制连接被本机沙箱组件错误阻断，本轮未把自动点击冒充为 PASS；以无存储运行时测试、隔离 canary 和公网静态资源实测作为自动化证据，并保留用户端最终视觉确认入口。

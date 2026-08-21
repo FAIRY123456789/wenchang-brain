@@ -172,3 +172,16 @@ sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-<timestamp>.pr
 ## 未记录的敏感信息
 
 本文不记录密码、API Key、SSH 私钥内容或私钥文件名。服务器配置必须使用 `vim`，禁止使用 `nano`；所有检查仅输出配置布尔值或脱敏状态。
+
+## 2026-08-21 · 语言切换可靠性热修复
+
+- Release：`1.5.1-language-ui-fix-20260821`
+- Git Commit：`0dc30e831830cc548d42aee29c0bd14fa78855cc`
+- Archive SHA-256：`822a435f56b5e50a001bd4ea9762e995a367624142993a8460ad3bb1a1c23540`
+- 本地门禁：Maven 85/85 PASS；Node 语法 PASS；受限本地存储运行时切换 PASS；本轮未调用 DeepSeek/Tavily。
+- Canary：`127.0.0.1:18082`，独立 H2/Vector/Artifact/Research/Trace，无生产 Secret、MCP 和 Search；Health、新版 HTML、`i18n.js?v=1.5.1-language-ui`、`styles.css?v=1.5.1-language-ui` 均通过后停止。
+- 正式切换：`/opt/wenchang-brain/app/current.jar` 与 `/opt/wenchang-brain/mcp/current.jar` 已指向新 Release；Main/MCP/Nginx active，NRestarts=0。
+- 公网：`http://120.26.238.159/wenchang-brain/` 及版本化 JS/CSS HTTP 200；`/` 与 `/future-bay-eco-lab/` 保持 HTTP 200。
+- 运行状态：DeepSeek `REMOTE_DEFAULT/deepseek-chat`；RAG `READY`，50 files/136 chunks；MCP `UP`；没有读取或输出 Secret 明文。
+- 回滚：`sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260821T121238Z.properties`
+- 验收限制：桌面应用的可视化浏览器连接被本机沙箱组件故障阻断；未将自动点击标记为 PASS。公网内容、无存储运行时和 canary 证据均已通过，用户端可直接刷新并验证视觉交互。
