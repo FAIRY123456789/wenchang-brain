@@ -79,6 +79,7 @@ class AgentCommandExperienceV15ContractTest {
         String html = read("index.html");
         String app = read("app.js");
         String css = read("styles.css");
+        String i18n = read("i18n.js");
 
         assertThat(html).doesNotContain("agentDetailGlyph", "sidebarAgentList");
         assertThat(app).doesNotContain("function agentGlyph(", "item.icon");
@@ -93,7 +94,8 @@ class AgentCommandExperienceV15ContractTest {
                 .contains(".agent-detail-panel h2 { font-size: 24px; }");
 
         assertThat(html).contains("skillDetailDialog", "skillDetailTitle", "skillDetailUse");
-        assertThat(app).contains("function openSkillDetail(id, returnFocus", "查看说明", "palette-option-detail");
+        assertThat(app).contains("function openSkillDetail(id, returnFocus", "palette-option-detail");
+        assertThat(i18n).contains("'palette.viewDetails': '查看说明'");
     }
 
     private static String read(String relativePath) throws IOException {

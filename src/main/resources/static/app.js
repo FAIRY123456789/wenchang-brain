@@ -1,3 +1,6 @@
+const i18n = window.WenchangI18n;
+const t = (key, variables) => i18n?.t(key, variables) || key;
+
 const state = {
   conversations: [],
   activeConversationId: localStorage.getItem('wenchang-active-conversation') || null,
@@ -27,7 +30,8 @@ const state = {
   detailAgentId: null,
   detailSkillId: null,
   detailReturnFocus: null,
-  pendingApproval: null
+  pendingApproval: null,
+  language: i18n?.getLanguage() || 'zh-CN'
 };
 
 const $ = (id) => document.getElementById(id);
@@ -74,6 +78,7 @@ const agentCommandBar = $('agentCommandBar');
 const commandIdle = $('commandIdle');
 const agentCommandTrigger = $('agentCommandTrigger');
 const skillCommandTrigger = $('skillCommandTrigger');
+const languageInput = $('languageInput');
 const mobileSidebarQuery = window.matchMedia('(max-width: 900px)');
 const agentDetailDialog = $('agentDetailDialog');
 const skillDetailDialog = $('skillDetailDialog');
@@ -116,6 +121,7 @@ $('editKeyButton').addEventListener('click', () => {
 $('testConnectionButton').addEventListener('click', testConnection);
 $('restoreDefaultButton').addEventListener('click', restoreDefault);
 $('runAgentDiagnosticsButton').addEventListener('click', runAgentDiagnostics);
+languageInput.addEventListener('change', () => i18n?.setLanguage(languageInput.value));
 $('agentDetailClose').addEventListener('click', closeAgentDetail);
 $('agentDetailStart').addEventListener('click', startWithDetailedAgent);
 $('skillDetailClose').addEventListener('click', closeSkillDetail);
@@ -154,6 +160,17 @@ document.addEventListener('keydown', (event) => {
   }
 });
 mobileSidebarQuery.addEventListener('change', syncSidebarA11y);
+window.addEventListener('wenchang:languagechange', (event) => {
+  state.language = event.detail?.language || i18n?.getLanguage() || 'zh-CN';
+  languageInput.value = state.language;
+  renderSelections();
+  renderHistory();
+  if (!commandPalette.hidden) renderCommandPalette();
+  if (state.model) updateModelUi(state.model);
+  void refreshKnowledgeStatus();
+  void refreshToolServiceStatus();
+});
+languageInput.value = state.language;
 syncSidebarA11y();
 
 async function initialize() {
@@ -164,7 +181,7 @@ async function initialize() {
   root.dataset.appState = 'APP_LOADING';
   root.dataset.hydrated = 'false';
   main.setAttribute('aria-busy', 'true');
-  appLoadingText.textContent = '正在恢复文昌智脑';
+  appLoadingText.textContent = t('loading.restore');
   appRetry.hidden = true;
   clearHeroTransition();
 
@@ -175,7 +192,7 @@ async function initialize() {
   try {
     await Promise.all([
       loadConversations(),
-      loadAgentExperience().catch(() => showToast('智能体能力列表暂时不可用'))
+      loadAgentExperience().catch(() => showToast(t('palette.empty')))
     ]);
     const activeExists = state.activeConversationId
       && state.conversations.some((item) => item.id === state.activeConversationId);
@@ -324,24 +341,26 @@ function agentContextCard(agent) {
   summary.textContent = agent.contextSummary || agentDescription(agent);
   const skillLine = document.createElement('small');
   const available = agentSkills(agent).map((id) => skillById(id)?.command).filter(Boolean).slice(0, 5);
-  skillLine.textContent = available.length ? `可用技能：${available.join('  ')}` : '已加载智能体能力';
+  skillLine.textContent = available.length
+    ? t('context.availableSkills', {value: available.join('  ')})
+    : t('context.agentReady');
   copy.append(name, summary, skillLine);
   const actions = document.createElement('div');
   actions.className = 'context-actions';
   const detail = document.createElement('button');
   detail.type = 'button';
   detail.className = 'agent-context-detail';
-  detail.textContent = '查看能力';
+  detail.textContent = t('context.viewCapabilities');
   detail.addEventListener('click', () => openAgentDetail(agent.id, detail));
   const switchButton = document.createElement('button');
   switchButton.type = 'button';
   switchButton.className = 'agent-context-switch';
-  switchButton.textContent = '切换';
+  switchButton.textContent = t('context.switch');
   switchButton.addEventListener('click', () => openCommandSelector('agent', switchButton));
   const skillButton = document.createElement('button');
   skillButton.type = 'button';
   skillButton.className = 'agent-context-skill';
-  skillButton.textContent = '/ 使用技能';
+  skillButton.textContent = t('context.useSkill');
   skillButton.addEventListener('click', () => openCommandSelector('skill', skillButton));
   const remove = document.createElement('button');
   remove.type = 'button';
@@ -368,19 +387,19 @@ function skillContextCard(skill) {
   const description = document.createElement('span');
   description.textContent = skillDescription(skill);
   const inputHint = document.createElement('small');
-  inputHint.textContent = `需要输入：${skillInputHint(skill)}`;
+  inputHint.textContent = t('context.requiredInput', {value: skillInputHint(skill)});
   copy.append(name, description, inputHint);
   const actions = document.createElement('div');
   actions.className = 'context-actions';
   const explain = document.createElement('button');
   explain.type = 'button';
   explain.className = 'skill-context-detail';
-  explain.textContent = '查看说明';
+  explain.textContent = t('context.viewDetails');
   explain.addEventListener('click', () => openSkillDetail(skill.id, explain));
   const switchButton = document.createElement('button');
   switchButton.type = 'button';
   switchButton.className = 'skill-context-switch';
-  switchButton.textContent = '切换';
+  switchButton.textContent = t('context.switch');
   switchButton.addEventListener('click', () => openCommandSelector('skill', switchButton));
   const remove = document.createElement('button');
   remove.type = 'button';
@@ -444,12 +463,12 @@ function renderCommandPalette() {
   commandPalette.hidden = false;
   const header = document.createElement('div');
   header.className = 'palette-header';
-  header.innerHTML = `<strong>${state.paletteType === 'agent' ? '选择智能体' : '选择技能'}</strong><span>Esc 关闭 · 方向键选择 · Enter 确认</span>`;
+  header.innerHTML = `<strong>${t(state.paletteType === 'agent' ? 'palette.agentTitle' : 'palette.skillTitle')}</strong><span>${t('palette.keyboardHint')}</span>`;
   commandPalette.append(header);
   if (!state.paletteItems.length) {
     const empty = document.createElement('div');
     empty.className = 'palette-empty';
-    empty.textContent = '没有匹配的能力';
+    empty.textContent = t('palette.empty');
     commandPalette.append(empty);
     return;
   }
@@ -485,7 +504,7 @@ function renderCommandPalette() {
     const meta = document.createElement('em');
     meta.textContent = state.paletteType === 'agent'
       ? (item.contextSummary || agentCapabilities(item).slice(0, 3).join(' · '))
-      : `输出：${skillOutput(item)}`;
+      : t('palette.output', {value: skillOutput(item)});
     copy.append(name, description, meta);
     button.append(copy);
     button.addEventListener('mousedown', (event) => event.preventDefault());
@@ -496,8 +515,8 @@ function renderCommandPalette() {
       const explain = document.createElement('button');
       explain.type = 'button';
       explain.className = 'palette-option-detail';
-      explain.textContent = '查看说明';
-      explain.setAttribute('aria-label', `查看 ${item.command} 说明`);
+      explain.textContent = t('palette.viewDetails');
+      explain.setAttribute('aria-label', `${t('palette.viewDetails')} ${item.command}`);
       explain.addEventListener('mousedown', (event) => event.preventDefault());
       explain.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -593,14 +612,14 @@ function renderHistory() {
     historyEmpty.hidden = false;
     return;
   }
-  const groups = new Map([['今天', []], ['昨天', []], ['最近 7 天', []], ['更早', []]]);
+  const groups = new Map([['today', []], ['yesterday', []], ['recent', []], ['older', []]]);
   state.conversations.forEach((conversation) => groups.get(dateGroup(conversation.updatedAt)).push(conversation));
   groups.forEach((items, label) => {
     if (!items.length) return;
     const section = document.createElement('section');
     section.className = 'history-group';
     const heading = document.createElement('h3');
-    heading.textContent = label;
+    heading.textContent = t(`history.${label}`);
     section.append(heading);
     items.forEach((conversation) => section.append(historyItem(conversation)));
     history.append(section);
@@ -636,12 +655,12 @@ function historyItem(conversation) {
     menu.className = 'history-menu';
     const rename = document.createElement('button');
     rename.type = 'button';
-    rename.textContent = '重命名';
+    rename.textContent = t('history.rename');
     rename.addEventListener('click', (event) => { event.stopPropagation(); beginRename(conversation); });
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'danger';
-    remove.textContent = '删除';
+    remove.textContent = t('history.delete');
     remove.addEventListener('click', (event) => { event.stopPropagation(); deleteConversation(conversation); });
     menu.append(rename, remove);
     wrapper.append(menu);
@@ -972,10 +991,10 @@ function skillGroupKey(skill = {}) {
 
 function skillGroupLabel(skill = {}) {
   return {
-    RESEARCH_SEARCH: '研究与检索',
-    TASK_FILES: '任务与文件',
-    PLANNING_SERVICE: '规划与服务'
-  }[skillGroupKey(skill)] || '其他能力';
+    RESEARCH_SEARCH: t('group.research'),
+    TASK_FILES: t('group.files'),
+    PLANNING_SERVICE: t('group.planning')
+  }[skillGroupKey(skill)] || t('group.other');
 }
 
 function orderedSkills() {
@@ -1604,10 +1623,10 @@ function dateGroup(value) {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const days = Math.round((start - target) / 86400000);
-  if (days <= 0) return '今天';
-  if (days === 1) return '昨天';
-  if (days < 7) return '最近 7 天';
-  return '更早';
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7) return 'recent';
+  return 'older';
 }
 
 function openMobileSidebar() {
@@ -1658,10 +1677,12 @@ async function refreshKnowledgeStatus() {
     const ready = ['READY', 'LOADED'].includes(data.state);
     pill.className = ready ? 'ready' : 'error';
     const files = data.files ?? data.sourceFiles ?? 0;
-    pill.querySelector('b').textContent = ready ? `${files} 份资料 · ${data.chunks} 个分块` : '知识库未就绪';
+    pill.querySelector('b').textContent = ready
+      ? t('knowledge.summary', {files, chunks: data.chunks})
+      : t('knowledge.notReady');
   } catch {
     pill.className = 'error';
-    pill.querySelector('b').textContent = '知识库连接失败';
+    pill.querySelector('b').textContent = t('knowledge.failed');
   }
 }
 
@@ -1673,7 +1694,7 @@ async function refreshModelStatus() {
     populateSettings(status);
   } catch {
     $('modelPill').className = 'error';
-    $('modelPill').querySelector('b').textContent = '模型状态不可用';
+    $('modelPill').querySelector('b').textContent = t('model.statusUnavailable');
   }
 }
 
@@ -1681,13 +1702,13 @@ function updateModelUi(status) {
   const remote = String(status.modelMode).startsWith('REMOTE');
   const modelName = String(status.model || '').trim() || providerName(status.provider);
   const configured = remote && status.configured === true && status.apiKeyConfigured === true;
-  const label = configured ? `${providerName(status.provider)} · ${modelName}` : '模型未配置';
+  const label = configured ? `${providerName(status.provider)} · ${modelName}` : t('model.notConfigured');
   $('modelPill').className = configured ? 'ready' : 'error';
   $('modelPill').querySelector('b').textContent = label;
-  $('sidebarModelLabel').textContent = configured ? modelName : '进入模型设置';
+  $('sidebarModelLabel').textContent = configured ? modelName : t('model.openSettings');
   $('activeModelName').textContent = label;
-  $('activeModelMode').textContent = configured ? '当前模型' : '进入模型设置完成配置';
-  $('mobileStatus').textContent = configured ? providerName(status.provider) : '模型未配置';
+  $('activeModelMode').textContent = configured ? t('model.current') : t('model.configureHint');
+  $('mobileStatus').textContent = configured ? providerName(status.provider) : t('model.notConfigured');
 }
 
 async function refreshToolServiceStatus() {
@@ -1698,7 +1719,9 @@ async function refreshToolServiceStatus() {
     const mcpTools = Array.isArray(catalog.mcpTools) ? catalog.mcpTools : [];
     const connected = mcpTools.length > 0;
     card.classList.toggle('connected', connected);
-    $('toolServiceStatus').textContent = connected ? `已连接 · ${mcpTools.length} 个可用工具` : '服务未连接';
+    $('toolServiceStatus').textContent = connected
+      ? t('tools.connected', {count: mcpTools.length})
+      : t('tools.disconnected');
     const labels = mcpTools.map((tool) => toolLabel(tool.name || tool)).filter(Boolean);
     if (labels.length) {
       $('toolServiceList').replaceChildren(...[...new Set(labels)].map((label) => {
@@ -1709,7 +1732,7 @@ async function refreshToolServiceStatus() {
     }
   } catch {
     card.classList.remove('connected');
-    $('toolServiceStatus').textContent = '服务状态不可用';
+    $('toolServiceStatus').textContent = t('tools.statusUnavailable');
   }
 }
 
@@ -1758,10 +1781,10 @@ function settingsPayload() {
 async function runAgentDiagnostics() {
   const button = $('runAgentDiagnosticsButton');
   button.disabled = true;
-  button.textContent = '检查中…';
+  button.textContent = `${t('common.checking')}…`;
   document.querySelectorAll('[data-diagnostic]').forEach((row) => {
     row.className = 'running';
-    row.querySelector('b').textContent = '检查中';
+    row.querySelector('b').textContent = t('common.checking');
     row.querySelector('small').textContent = '—';
   });
   try {
@@ -1776,13 +1799,13 @@ async function runAgentDiagnostics() {
   } catch (error) {
     document.querySelectorAll('[data-diagnostic]').forEach((row) => {
       row.className = 'failed';
-      row.querySelector('b').textContent = '异常';
-      row.querySelector('small').textContent = '未完成';
+      row.querySelector('b').textContent = t('common.error');
+      row.querySelector('small').textContent = t('common.notCompleted');
     });
     showToast(error.message);
   } finally {
     button.disabled = false;
-    button.textContent = '再次检查';
+    button.textContent = t('common.again');
   }
 }
 
@@ -1803,7 +1826,7 @@ function updateDiagnostic(name, available, latency) {
   const row = document.querySelector(`[data-diagnostic="${name}"]`);
   if (!row) return;
   row.className = available ? 'available' : 'failed';
-  row.querySelector('b').textContent = available ? '可用' : '异常';
+  row.querySelector('b').textContent = available ? t('common.available') : t('common.error');
   row.querySelector('small').textContent = Number.isFinite(Number(latency)) ? `${Number(latency)} ms` : '—';
 }
 

@@ -57,8 +57,9 @@ class AgentExperienceUiContractTest {
     void userVisibleCopyUsesFormalModelState() throws IOException {
         String html = read("index.html");
         String app = read("app.js");
+        String i18n = read("i18n.js");
 
-        assertThat(html + app)
+        assertThat(html + app + i18n)
                 .contains("模型未配置", "进入模型设置")
                 .doesNotContain("本地演示模型", "本地回退模式", "Demo Model", "Local Model");
     }
