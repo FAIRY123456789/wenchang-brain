@@ -149,3 +149,16 @@
 - 测试：主应用 Maven 72/72 PASS，MCP 模块 7/7 PASS，均为 0 failure / 0 error。
 - Secret 清理：本地 Secret、部署私有配置、SSH Key、日志、H2、Artifact、Research、VectorStore、Maven Cache 与构建产物均由 `.gitignore` 排除；Example 配置只保留空字段结构。
 - 首次 Push：完成后以 `origin/main` 与本地 `HEAD` 相同且 working tree clean 为验收标准；未操作已部署服务器。
+
+## 2026-08-21 · 五语系统界面与生产同步
+
+- 产品范围：只扩展系统界面语言，不改变 DeepSeek、Agent、Skill、MCP、RAG、Search、Artifact 或 Conversation 的业务协议和模型请求语言。
+- 语言能力：设置抽屉支持中文（默认）、English、Bahasa Indonesia、العربية、Português；语言选择保存在 `localStorage`，刷新恢复；阿拉伯语设置 `html[dir=rtl]`，其他语言为 LTR。
+- 前端架构：新增唯一 `WenchangI18n` 运行时与 `data-i18n` 契约，静态 HTML、Command Bar、设置、Agent/Skill 状态和动态标签统一使用同一翻译入口；语言偏好不写入服务器、不进入模型 Prompt。
+- 本地验收：`node --check i18n.js`、`node --check app.js` PASS；Maven clean package 85/85 PASS，MCP 7/7 PASS；新增系统语言 UI 合约并保持既有 Agent Command Experience 回归通过。
+- Release：`1.5.0-i18n-20260821`，源码 Commit=`3e35f5f47b3357fd01caf1f06416d5f0f0dd61a1`，归档 SHA-256=`9487f61f66daece4e472c9fe37a4a5e4a47a76bfc81edadcf9d50292b7e55150`；敏感/运行态文件扫描为 0 项。
+- 预发布：在 ECS 独立目录与 `127.0.0.1:18082` 启动隔离实例，未加载生产 Secrets，未连接 MCP 或 Search；Health、Agent、Skill、五语 HTML/JS 标记、RTL 逻辑和 JS/CSS MIME 通过后关闭，正式服务始终 active。
+- 正式切换：应用与 MCP symlink 指向 `/opt/wenchang-brain/releases/1.5.0-i18n-20260821/`；主应用、MCP、Nginx 均 active，主/MCP `NRestarts=0`，18080/18091 继续仅监听 loopback。
+- 生产健康：DeepSeek=`REMOTE_DEFAULT / deepseek-chat`，RAG=`READY`，VectorStore=`LOADED`，50 files / 136 chunks；本轮不额外消耗 DeepSeek 或 Tavily 额度，因为语言功能不改变服务端 AI 链路。
+- 公网验收：`/wenchang-brain/`、五语脚本、主脚本、样式、Health、Agent、Skill、Conversation 均 HTTP 200；既有 `/` 和 `/future-bay-eco-lab/` 均保持 HTTP 200；Nginx `-t` PASS。
+- Secret 与回滚：生产 Secret 文件保持 `0600 wenchang:wenchang` 且未输出内容；预切换回滚点为 `/opt/wenchang-brain/backups/predeploy-i18n-20260821T080553Z.properties`，部署回滚元数据为 `/opt/wenchang-brain/backups/rollback-20260821T080553Z.properties`。

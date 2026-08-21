@@ -2,7 +2,19 @@
 
 ## 发布状态
 
-2026-08-12 已完成正式部署和公网验收。Release 为 `1.5.0-rc1-20260812`；公网地址为 `http://120.26.238.159/wenchang-brain/`。服务器仅开放现有 80 端口，主应用与 MCP 保持 loopback。
+2026-08-21 已完成五语系统界面升级并同步正式环境。当前 Release 为 `1.5.0-i18n-20260821`，Git Commit 为 `3e35f5f47b3357fd01caf1f06416d5f0f0dd61a1`；公网地址为 `http://120.26.238.159/wenchang-brain/`。服务器仍仅开放现有 80 端口，主应用与 MCP 保持 loopback。
+
+### 2026-08-21 · 五语系统界面更新
+
+- 设置抽屉新增系统语言选择：中文（默认）、English、Bahasa Indonesia、العربية、Português。
+- 语言选择保存在浏览器本地存储，刷新后继续生效；阿拉伯语自动切换为 RTL，其余语言保持 LTR。
+- Release SHA-256：`9487f61f66daece4e472c9fe37a4a5e4a47a76bfc81edadcf9d50292b7e55150`；归档逐文件校验通过，未包含 Git、Maven 缓存、真实 Secrets、H2、历史 Artifact 或 Research 数据。
+- 本地门禁：主应用 85/85 PASS，MCP 7/7 PASS；`i18n.js` 与 `app.js` JavaScript 语法检查通过。
+- 预发布：独立目录、`127.0.0.1:18082`、隔离 H2/Artifact/Research/Trace、MCP 与 Web Search 关闭；健康、Agent、Skill、五语资源及 MIME 验收通过后停止临时实例。
+- 正式发布：`wenchang-brain`、`wenchang-mcp`、`nginx` 均 active，主/MCP `NRestarts=0`；RAG 50 files / 136 chunks，VectorStore `LOADED`，DeepSeek 配置仍为 `REMOTE_DEFAULT / deepseek-chat`。
+- 公网验收：首页、`i18n.js`、`app.js`、`styles.css`、Health、Agent、Skill、Conversation 均 HTTP 200；既有 `/` 与 `/future-bay-eco-lab/` 保持 HTTP 200；Nginx 配置检查通过。
+- Secrets：生产 `local-secrets.properties` 未进入 Release，部署后仍为 `0600 wenchang:wenchang`，验收过程未输出 Key 明文。
+- 回滚点：`/opt/wenchang-brain/backups/predeploy-i18n-20260821T080553Z.properties`；部署脚本回滚元数据为 `/opt/wenchang-brain/backups/rollback-20260821T080553Z.properties`。
 
 ## 固定拓扑
 
