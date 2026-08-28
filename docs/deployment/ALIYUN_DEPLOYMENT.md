@@ -212,3 +212,17 @@ sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-<timestamp>.pr
 - 回滚：`sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260828T060901Z.properties`
 - 浏览器限制：桌面浏览器控制运行内核被 Windows 沙箱 helper 错误终止，未执行可视化自动点击，也未虚报为 PASS；由 87 项回归、canary 和公网静态/HTTP 契约覆盖自动化验收。
 - Secret：未读取、未输出、未进入归档；未查看生产日志或 Trace；服务器配置未使用 nano。
+## 2026-08-28 · 编辑分支 Artifact 隔离与任务边界发布
+
+- Release：`1.5.4-edit-boundaries-20260828`
+- 源码 Commit：`d105bf9adae97387d63e7c9afe06caae77aac6b2`
+- 归档 SHA-256：`edad31c1d0ba0ba1fc6aeef57941259c3989ba0d5addde3d7e8a690beb65951e`
+- 本地门禁：主应用 Maven clean package 91/91 PASS；MCP 非网络业务 6/6 PASS；Node `app.js / i18n.js` 语法 PASS；Secret pattern count 为 0；未调用 DeepSeek/Tavily。
+- 本机限制：MCP HTTP 集成测试唯一失败来自 Windows 沙箱 Java NIO loopback，非工具逻辑断言失败；正式 ECS 随后完成真实 MCP 网络验收。
+- Canary：`127.0.0.1:18082`，内存 H2、独立 Artifact/Research/Trace、禁用 Search/MCP、不加载 Secret；Health、编辑 UI、Enter/IME、无会话级 Artifact 回填与当前 Message metadata 渲染 PASS。
+- MCP 正式验收：`initialize=200`、`tools/list=200`、`toolCount=7`、`tools/call=200`、`isError=false`，只读 `searchTownshipProfile(龙楼镇)` 返回有效内容。
+- 正式状态：Main/MCP/Nginx active，NRestarts=0；当前 JAR 指向 `/opt/wenchang-brain/releases/1.5.4-edit-boundaries-20260828/`。
+- 公网：产品、版本化 JS/CSS/i18n、Health 以及既有 `/`、`/future-bay-eco-lab/` 全部 HTTP 200；发布后未触发外部模型或搜索调用。
+- 回滚：`sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260828T093542Z.properties`
+- 浏览器限制：桌面浏览器控制内核被 Windows sandbox helper 连续终止，未把可视化点击虚报为 PASS；UI 合同测试、实际 JAR、canary 与公网 HTTP 均已通过。
+- Secret：未读取、未输出、未进入 Release；未查看生产 Trace；服务器配置未使用 nano。

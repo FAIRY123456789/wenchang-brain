@@ -1,3 +1,11 @@
+## 2026-08-28 · 1.5.4 公网发布结果
+
+- Release `1.5.4-edit-boundaries-20260828` 已从隔离 canary 切换至正式环境，源码 `d105bf9`，归档 SHA-256 `edad31c1…65951e`。
+- Canary `127.0.0.1:18082` 使用内存 H2、独立 Artifact/Research/Trace、禁用 Search/MCP 且不加载生产 Secret；Health、蓝色编辑态、Enter/IME、无 `refreshConversationArtifacts`、Message Artifact 渲染均 PASS 后停止并清理临时目录。
+- 正式 Main/MCP/Nginx 均 active，NRestarts=0；MCP `initialize / tools/list / tools/call` HTTP 200，协议 `2025-11-25`，工具数 7，龙楼镇只读查询返回成功。
+- 公网产品、版本化 JS/CSS/i18n、Health 与既有 `/`、`/future-bay-eco-lab/` 七项全部 HTTP 200；实际 JAR 静态契约确认新版已生效。
+- 回滚：`/opt/wenchang-brain/backups/rollback-20260828T093542Z.properties`。生产 Secret 未读取、未输出、未进入 Release；未调用 DeepSeek/Tavily。
+- 浏览器限制：桌面浏览器控制内核连续两次被 Windows sandbox helper 终止，未把可视化自动点击标记为 PASS；由 UI 合同测试、ECS canary、正式 JAR 契约和公网 HTTP 覆盖自动化验收。
 ## 2026-08-28 · 1.5.4 编辑体验与任务边界修复
 
 - 真实诊断：用户截图中的第 3 个问题版本实际 `toolNames=[]`、`assistantArtifactCount=0`，没有重新生成 Word；Conversation Artifact API 仍返回旧分支的 1 个文件。Root Cause 是前端在当前消息无文件时按 conversationId 拉取全会话 Artifact，并错误挂到最新 Assistant。
