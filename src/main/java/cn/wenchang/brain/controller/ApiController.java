@@ -88,12 +88,17 @@ public class ApiController {
         ensureModelConfigured();
         var conversation = conversationService.resolveForChat(request.effectiveConversationId(), request.message(),
                 request.effectiveAgentId());
+        if (request.editMessageId() != null) {
+            conversationService.prepareEdit(conversation.id(), request.editMessageId());
+            conversationMemoryService.clear(conversation.id());
+        }
         conversationMemoryService.ensureRestored(conversation.id());
-        conversationService.appendUser(conversation.id(), request.message());
+        Long userMessageId = conversationService.appendUser(conversation.id(), request.message(),
+                request.effectiveAgentId(), request.effectiveSkillId(), request.editMessageId());
         ChatResponseDto response = agentService.chat(request.message(), conversation.id(),
                         request.effectiveAgentId(), request.effectiveSkillId())
                 .withConversationId(conversation.id());
-        conversationService.appendAssistant(conversation.id(), response);
+        conversationService.appendAssistant(conversation.id(), response, userMessageId);
         return response;
     }
 
@@ -105,8 +110,13 @@ public class ApiController {
             try {
                 var conversation = conversationService.resolveForChat(request.effectiveConversationId(), request.message(),
                         request.effectiveAgentId());
+                if (request.editMessageId() != null) {
+                    conversationService.prepareEdit(conversation.id(), request.editMessageId());
+                    conversationMemoryService.clear(conversation.id());
+                }
                 conversationMemoryService.ensureRestored(conversation.id());
-                conversationService.appendUser(conversation.id(), request.message());
+                Long userMessageId = conversationService.appendUser(conversation.id(), request.message(),
+                        request.effectiveAgentId(), request.effectiveSkillId(), request.editMessageId());
                 sendEvent(emitter, "conversation", conversation);
                 ChatResponseDto response = agentService.stream(request.message(), conversation.id(),
                         request.effectiveAgentId(), request.effectiveSkillId(),
@@ -114,7 +124,7 @@ public class ApiController {
                         chunk -> sendEvent(emitter, "answer_chunk", Map.of("text", chunk)),
                         event -> sendEvent(emitter, event.type(), event.data()))
                         .withConversationId(conversation.id());
-                conversationService.appendAssistant(conversation.id(), response);
+                conversationService.appendAssistant(conversation.id(), response, userMessageId);
                 sendEvent(emitter, "complete", response);
                 emitter.complete();
             } catch (Exception exception) {

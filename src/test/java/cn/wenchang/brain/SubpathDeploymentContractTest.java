@@ -17,9 +17,9 @@ class SubpathDeploymentContractTest {
         String html = Files.readString(STATIC.resolve("index.html"), StandardCharsets.UTF_8);
         String app = Files.readString(STATIC.resolve("app.js"), StandardCharsets.UTF_8);
 
-        assertThat(html).contains("href=\"assets/wenchang-logo.svg\"", "href=\"styles.css?v=1.5.2-diagnostics-actions\"",
+        assertThat(html).contains("href=\"assets/wenchang-logo.svg\"", "href=\"styles.css?v=1.5.3-conversation-branches\"",
                 "src=\"vendor/marked.min.js\"", "src=\"vendor/purify.min.js\"",
-                "src=\"i18n.js?v=1.5.2-diagnostics-actions\"", "src=\"app.js?v=1.5.2-diagnostics-actions\"")
+                "src=\"i18n.js?v=1.5.3-conversation-branches\"", "src=\"app.js?v=1.5.3-conversation-branches\"")
                 .doesNotContain("href=\"/assets/", "href=\"/styles.css", "src=\"/vendor/", "src=\"/app.js");
         assertThat(app).contains("const APP_BASE_PATH", "const appUrl", "appUrl('/api/chat/stream')",
                 "fetch(appUrl(url), options)", "appUrl(`/api/artifacts/")

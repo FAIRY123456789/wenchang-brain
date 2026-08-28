@@ -43,6 +43,13 @@ public class ConversationController {
         return detail;
     }
 
+    @PostMapping("/{id}/messages/{messageId}/activate")
+    public ConversationDetail activateRevision(@PathVariable String id, @PathVariable Long messageId) {
+        ConversationDetail detail = conversationService.activateRevision(id, messageId);
+        memoryService.clear(id);
+        return detail;
+    }
+
     @PatchMapping("/{id}")
     public ConversationSummary rename(@PathVariable String id,
                                       @Valid @RequestBody RenameConversationRequest request) {

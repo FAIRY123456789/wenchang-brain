@@ -1,18 +1,13 @@
 package cn.wenchang.brain.service;
 
 import cn.wenchang.brain.persistence.MessageEntity;
-import cn.wenchang.brain.persistence.MessageRepository;
 import cn.wenchang.brain.persistence.MessageRole;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,23 +17,21 @@ public class ConversationMemoryService {
 
     private static final int RESTORE_LIMIT = 18;
     private final ChatMemory chatMemory;
-    private final MessageRepository messageRepository;
+    private final ConversationService conversationService;
     private final Set<String> restored = ConcurrentHashMap.newKeySet();
 
-    public ConversationMemoryService(ChatMemory chatMemory, MessageRepository messageRepository) {
+    public ConversationMemoryService(ChatMemory chatMemory, ConversationService conversationService) {
         this.chatMemory = chatMemory;
-        this.messageRepository = messageRepository;
+        this.conversationService = conversationService;
     }
 
-    @Transactional(readOnly = true)
     public void ensureRestored(String conversationId) {
         if (restored.contains(conversationId)) return;
         synchronized (conversationId.intern()) {
             if (restored.contains(conversationId)) return;
-            List<MessageEntity> recent = new ArrayList<>(messageRepository
-                    .findAllByConversation_IdOrderByCreatedAtDescIdDesc(conversationId, PageRequest.of(0, RESTORE_LIMIT)));
-            Collections.reverse(recent);
-            List<Message> messages = recent.stream().map(this::springMessage).toList();
+            List<MessageEntity> active = conversationService.activeMessages(conversationId);
+            int from = Math.max(0, active.size() - RESTORE_LIMIT);
+            List<Message> messages = active.subList(from, active.size()).stream().map(this::springMessage).toList();
             chatMemory.clear(conversationId);
             if (!messages.isEmpty()) chatMemory.add(conversationId, messages);
             restored.add(conversationId);

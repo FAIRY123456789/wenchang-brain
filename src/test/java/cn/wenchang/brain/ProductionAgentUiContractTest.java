@@ -51,10 +51,12 @@ class ProductionAgentUiContractTest {
                 "event === 'approval_required'", "function runAgentDiagnostics()",
                 "function refreshConversationArtifacts(conversationId, preferredElement = null)")
                 .contains("String(value.status || value.health || '').toUpperCase()")
-                .contains("function createMessageActions(content)", "function copyMessageText(content, button)",
-                        "function fallbackCopyText(value)", "function editUserMessage(content)")
-                .contains("if (role === 'user') element.append(createMessageActions(content || ''))");
-        assertThat(app).contains("artifact-name", "artifact-meta", "artifact-download", "下载文件")
+                .contains("function createMessageActions(content, metadata = {}, messageElement)", "function copyMessageText(content, button)",
+                        "function fallbackCopyText(value)", "function editUserMessage(content, metadata, messageElement)",
+                        "function activateMessageRevision(messageId)", "function createRevisionNavigator(revisions)")
+                .contains("if (role === 'user') element.append(createMessageActions(content || '', metadata || {}, element))");
+        assertThat(app).contains("artifact-name", "artifact-meta", "artifact-download", "t('artifact.download')")
+                .doesNotContain("open.textContent = '打开'")
                 .contains("appUrl(`/api/artifacts/${encodeURIComponent")
                 .contains("function safeArtifactUrl(value)")
                 .contains("artifactCount ? ` · ${artifactCount} 个文件`");
@@ -62,7 +64,8 @@ class ProductionAgentUiContractTest {
         assertThat(css).contains(
                 ".agent-context-card", ".agent-detail-panel", ".skill-detail-panel", ".artifact-card",
                 ".artifact-card .artifact-download", ".approval-panel", ".diagnostics-grid",
-                ".message-actions", ".message-action:focus-visible");
+                ".message-actions", ".message-action:focus-visible", ".message-revisions",
+                ".message-inline-editor", ".message-inline-submit");
     }
 
     private static String read(String relativePath) throws IOException {

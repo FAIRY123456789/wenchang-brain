@@ -38,6 +38,15 @@ public class MessageEntity {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "parent_message_id")
+    private Long parentMessageId;
+
+    @Column(name = "revision_group_id", length = 36)
+    private String revisionGroupId;
+
+    @Column(name = "revision_index")
+    private Integer revisionIndex;
+
     @Column(length = 64)
     private String traceId;
 
@@ -80,6 +89,9 @@ public class MessageEntity {
     public MessageRole getRole() { return role; }
     public String getContent() { return content; }
     public Instant getCreatedAt() { return createdAt; }
+    public Long getParentMessageId() { return parentMessageId; }
+    public String getRevisionGroupId() { return revisionGroupId; }
+    public Integer getRevisionIndex() { return revisionIndex; }
     public String getTraceId() { return traceId; }
     public String getModelProvider() { return modelProvider; }
     public String getModelName() { return modelName; }
@@ -90,6 +102,23 @@ public class MessageEntity {
     public String getSkillId() { return skillId; }
     public String getAgentRunJson() { return agentRunJson; }
     public String getArtifactsJson() { return artifactsJson; }
+
+    public void configureLineage(Long parentMessageId, String revisionGroupId, Integer revisionIndex) {
+        this.parentMessageId = parentMessageId;
+        this.revisionGroupId = revisionGroupId;
+        this.revisionIndex = revisionIndex;
+    }
+
+    public void ensureRevisionIdentity(String groupId, int index) {
+        if (role != MessageRole.USER) return;
+        if (revisionGroupId == null || revisionGroupId.isBlank()) revisionGroupId = groupId;
+        if (revisionIndex == null || revisionIndex < 1) revisionIndex = index;
+    }
+
+    public void attachUserContext(String agentId, String skillId) {
+        this.agentId = agentId;
+        this.skillId = skillId;
+    }
 
     public void attachAssistantMetadata(String traceId, String modelProvider, String modelName,
                                         String sourcesJson, String toolsUsedJson,

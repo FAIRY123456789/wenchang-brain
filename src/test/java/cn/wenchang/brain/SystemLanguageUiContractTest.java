@@ -23,7 +23,7 @@ class SystemLanguageUiContractTest {
                 .contains("value=\"zh-CN\"", "value=\"en\"", "value=\"id\"", "value=\"ar\"", "value=\"pt\"")
                 .contains("中文（默认）", "English", "Bahasa Indonesia", "العربية", "Português")
                 .contains("data-language-value=\"zh-CN\"", "data-language-value=\"en\"", "data-language-value=\"id\"", "data-language-value=\"ar\"", "data-language-value=\"pt\"")
-                .contains("styles.css?v=1.5.2-diagnostics-actions", "i18n.js?v=1.5.2-diagnostics-actions", "app.js?v=1.5.2-diagnostics-actions")
+                .contains("styles.css?v=1.5.3-conversation-branches", "i18n.js?v=1.5.3-conversation-branches", "app.js?v=1.5.3-conversation-branches")
                 .containsSubsequence("vendor/purify.min.js", "i18n.js", "app.js");
         assertThat(i18n)
                 .contains("const DEFAULT_LANGUAGE = 'zh-CN'")

@@ -19,5 +19,9 @@ class ChatRequestContractTest {
         assertThat(selected.effectiveConversationId()).isEqualTo("conversation-1");
         assertThat(selected.effectiveAgentId()).isEqualTo("aerospace");
         assertThat(selected.effectiveSkillId()).isEqualTo("deep-research");
+
+        ChatRequest edited = new ChatRequest("修改后的问题", null, "conversation-1",
+                "policy", "policy-search", 42L);
+        assertThat(edited.editMessageId()).isEqualTo(42L);
     }
 }

@@ -186,3 +186,13 @@
 - 灰度与生产：隔离 canary 127.0.0.1:18082 在无 Secret、无 MCP、无 Search 状态下验证 health + available 双字段、新版 HTML/JS/CSS 和消息操作资源后关闭；正式 Main/MCP/Nginx 均 active，NRestarts=0，公网版本资源和既有两个站点均 HTTP 200。
 - 回滚：/opt/wenchang-brain/backups/rollback-20260828T005816Z.properties。生产 Secret 未读取、未输出、未进入 Release。
 - 浏览器限制：桌面应用的浏览器自动控制连接连续两次被本机运行组件终止，未把自动点击冒充为 PASS；公网静态资源、隔离运行时、后端序列化和 UI 合同测试构成自动化验收证据。
+## 2026-08-28 · 文件操作与持久化对话分支
+
+- Artifact 交互：移除实际行为与下载完全相同的“打开”入口；在没有可靠 DOCX 内嵌预览器的当前架构下，统一保留一个明确的“下载文件”按钮。
+- 回答元信息：移除普通用户无须关注的 `DeepSeek · deepseek-chat` 灰色标签，保留知识库、工具与来源等可解释信息。
+- 原位编辑：用户问题在当前消息气泡内进入编辑态，取消或发送均不跳到页面底部 Composer；支持 Esc 取消与 Ctrl/Cmd+Enter 发送新版本。
+- 会话分支：Message 新增 parentMessageId、revisionGroupId、revisionIndex，Conversation 保存 activeLeafMessageId。编辑产生同级问题版本，旧问题、旧回答及其后续消息完整保留。
+- 版本导航：用户问题右下角显示上一版、`当前 / 总数`、下一版；切换版本后服务端返回该问题子树的最新活动路径，页面刷新仍保持选择。
+- 记忆隔离：ChatMemory 仅从 active leaf 反向恢复当前分支，编辑较早问题时只保留其共享前缀，防止旧分支回答污染新请求。
+- 兼容迁移：旧线性 Conversation 在首次读取时自动补齐父子关系和问题版本标识；Hibernate update 为现有 H2 增加可空字段，不删除历史消息。
+- 本地验收：分支持久化与记忆隔离集成测试 2/2 PASS；消息 UI、五语、子路径与请求契约定向测试 8/8 PASS；Maven clean package 87/87 PASS；未调用 DeepSeek/Tavily。

@@ -58,7 +58,7 @@ $releaseInfo = @(
     'project.version=1.5.0-SNAPSHOT',
     ('git.commit=' + $gitCommit),
     ('built.at.utc=' + [DateTime]::UtcNow.ToString('o')),
-    'main.tests=85/85 PASS',
+    'main.tests=87/87 PASS',
     'mcp.tests=7/7 PASS',
     'public.base-path=/wenchang-brain/'
 ) -join "`n"

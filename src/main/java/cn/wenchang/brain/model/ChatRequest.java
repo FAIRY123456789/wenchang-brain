@@ -7,14 +7,19 @@ public record ChatRequest(
         String sessionId,
         String conversationId,
         String agentId,
-        String skillId
+        String skillId,
+        Long editMessageId
 ) {
+    public ChatRequest(String message, String sessionId, String conversationId, String agentId, String skillId) {
+        this(message, sessionId, conversationId, agentId, skillId, null);
+    }
+
     public ChatRequest(String message, String sessionId) {
-        this(message, sessionId, null, "wenchang", null);
+        this(message, sessionId, null, "wenchang", null, null);
     }
 
     public ChatRequest(String message, String sessionId, String conversationId) {
-        this(message, sessionId, conversationId, "wenchang", null);
+        this(message, sessionId, conversationId, "wenchang", null, null);
     }
 
     public String effectiveConversationId() {

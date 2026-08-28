@@ -243,3 +243,13 @@ git clone git@github.com:FAIRY123456789/wenchang-brain.git
 ## 视觉资产
 
 Hero 使用本地保存的文昌淇水湾—航天发射场实景：`src/main/resources/static/assets/wenchang-qishui-bay-launch-site.jpg`，Wikimedia Commons / Shujianyang / CC BY-SA 4.0。原创“海岸线 + 火箭轨迹”标志位于 `src/main/resources/static/assets/wenchang-logo.svg`。
+
+## 对话版本与文件交互
+
+- 用户问题支持原位编辑：点击问题右下角“编辑”，直接在该消息气泡中修改并发送。
+- 每次编辑创建一个可持久化的会话分支；问题旁显示 `1 / 2`、`2 / 2` 版本导航，刷新后仍可切换。
+- 切换问题版本时，DeepSeek 会话记忆仅恢复当前分支的共享前缀和后续内容，不混入另一版本的回答。
+- Artifact 卡片只保留语义明确的“下载文件”。当前公网环境没有可靠的 DOCX 内嵌预览器，因此不再提供与下载行为重复的“打开”。
+- 回答元信息只展示知识库、工具与来源，不再重复显示 `DeepSeek · deepseek-chat` 技术标签。
+
+新增分支切换 API：`POST /api/conversations/{conversationId}/messages/{messageId}/activate`。

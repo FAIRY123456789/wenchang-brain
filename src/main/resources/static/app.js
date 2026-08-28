@@ -26,6 +26,7 @@ const state = {
   paletteOpenedFromInput: false,
   commandTriggerElement: null,
   activeRun: null,
+  inlineEditor: null,
   toolCatalog: null,
   detailAgentId: null,
   detailSkillId: null,
@@ -232,6 +233,7 @@ function setPageState(mode) {
 }
 
 function renderConversationDetail(detail, id) {
+  state.inlineEditor = null;
   state.activeConversationId = id;
   localStorage.setItem('wenchang-active-conversation', id);
   restoreConversationExperience(detail);
@@ -242,7 +244,7 @@ function renderConversationDetail(detail, id) {
   } finally {
     state.renderingHistory = false;
   }
-  void refreshConversationArtifacts(id);
+  if (!messages.querySelector('.artifact-card')) void refreshConversationArtifacts(id);
   main.classList.add('chatting');
   renderHistory();
 }
@@ -738,7 +740,8 @@ function renderPersistedMessage(message) {
   const artifacts = parseJson(message.artifactsJson || message.artifactJson || message.artifacts, []);
   appendMessage(message.role === 'USER' ? 'user' : 'assistant', message.content, {
     sources, toolsUsed, modelProvider: message.modelProvider, modelName: message.modelName,
-    traceId: message.traceId, agentId: message.agentId, skillId: message.skillId, agentRun, artifacts
+    traceId: message.traceId, agentId: message.agentId, skillId: message.skillId, agentRun, artifacts,
+    messageId: message.id, revisions: message.revisions || [], revisionIndex: message.revisionIndex
   });
 }
 
@@ -764,21 +767,41 @@ function startNewChat(focus = true, agentId = 'wenchang') {
   if (focus) input.focus();
 }
 
-async function sendMessage(raw) {
+async function sendMessage(raw, options = {}) {
   const text = String(raw || '').trim();
   if (!text || state.busy) return;
-  const animateHero = state.hydrated && state.appState === 'HOME'
+  const editMessageId = Number(options.editMessageId) || null;
+  const animateHero = !editMessageId && state.hydrated && state.appState === 'HOME'
     && !state.activeConversationId && messages.childElementCount === 0;
   if (animateHero) transitionHomeToChat();
   else setPageState('CHAT');
-  const agent = selectedAgent();
-  const skill = selectedSkill();
-  appendMessage('user', text, {agentId: agent.id, skillId: skill?.id});
+  const agent = options.agentId ? agentById(options.agentId) : selectedAgent();
+  const skill = options.skillId ? skillById(options.skillId) : selectedSkill();
+
+  if (editMessageId) {
+    const existing = messages.querySelector('[data-message-id="' + CSS.escape(String(editMessageId)) + '"]');
+    if (existing) {
+      let sibling = existing.nextSibling;
+      while (sibling) {
+        const next = sibling.nextSibling;
+        sibling.remove();
+        sibling = next;
+      }
+      existing.querySelector('.message-content').textContent = text;
+      existing.querySelector('.message-actions')?.remove();
+      existing.removeAttribute('data-message-id');
+    } else {
+      appendMessage('user', text, {agentId: agent.id, skillId: skill?.id});
+    }
+  } else {
+    appendMessage('user', text, {agentId: agent.id, skillId: skill?.id});
+  }
+
   input.value = '';
   closeCommandPalette();
   resizeInput();
   setChatBusy(true);
-  setProgress(skill ? `正在启动${skillName(skill)}…` : `正在连接${agentName(agent)}…`);
+  setProgress(skill ? '正在启动' + skillName(skill) + '…' : '正在连接' + agentName(agent) + '…');
   const assistant = appendMessage('assistant', '', {agentId: agent.id, skillId: skill?.id});
   const run = agent.id !== 'wenchang' || skill ? createAgentRun(assistant.element, agent, skill) : null;
   state.activeRun = run;
@@ -791,7 +814,8 @@ async function sendMessage(raw) {
         message: text,
         conversationId: state.activeConversationId,
         agentId: agent.id,
-        skillId: skill?.id || null
+        skillId: skill?.id || null,
+        editMessageId
       })
     });
     if (!response.ok) throw new Error(await readError(response));
@@ -822,15 +846,17 @@ async function sendMessage(raw) {
         if (!Array.isArray(completedArtifacts) || !completedArtifacts.length) {
           await refreshConversationArtifacts(state.activeConversationId, assistant.element);
         }
+        await reloadActiveConversation();
         await loadConversations();
       } else if (event === 'error') {
         throw new Error(data.message || '生成回答失败');
       }
     });
   } catch (error) {
-    finalizeAssistantMarkdown(assistant, `抱歉，本次回答没有完成：${error.message}`);
+    finalizeAssistantMarkdown(assistant, '抱歉，本次回答没有完成：' + error.message);
     assistant.element.classList.add('error');
     if (run) failAgentRun(run);
+    if (editMessageId && state.activeConversationId) await reloadActiveConversation();
   } finally {
     state.activeRun = null;
     setChatBusy(false);
@@ -840,9 +866,22 @@ async function sendMessage(raw) {
   }
 }
 
+async function reloadActiveConversation(focusMessageId = null) {
+  if (!state.activeConversationId) return;
+  const detail = await apiJson('/api/conversations/' + encodeURIComponent(state.activeConversationId));
+  renderConversationDetail(detail, state.activeConversationId);
+  setPageState('CHAT');
+  if (focusMessageId) {
+    const target = messages.querySelector('[data-message-id="' + CSS.escape(String(focusMessageId)) + '"]');
+    target?.scrollIntoView({block: 'center', behavior: 'smooth'});
+  } else {
+    scrollToLatest();
+  }
+}
 function appendMessage(role, content, metadata = null) {
   const element = document.createElement('article');
   element.className = `message ${role}`;
+  if (metadata?.messageId) element.dataset.messageId = String(metadata.messageId);
   if (metadata?.agentId) element.dataset.agentId = metadata.agentId;
   if (metadata?.skillId) element.dataset.skillId = metadata.skillId;
   if (role === 'assistant') {
@@ -871,7 +910,7 @@ function appendMessage(role, content, metadata = null) {
   if (role === 'assistant') renderMarkdown(content || '', body);
   else body.textContent = content || '';
   element.append(body);
-  if (role === 'user') element.append(createMessageActions(content || ''));
+  if (role === 'user') element.append(createMessageActions(content || '', metadata || {}, element));
   messages.append(element);
   if (role === 'assistant' && metadata?.agentRun) renderPersistedAgentRun(element, metadata.agentRun, metadata);
   if (metadata) addMessageMeta(element, metadata);
@@ -880,25 +919,78 @@ function appendMessage(role, content, metadata = null) {
   return {element, content: body, rawMarkdownBuffer: content || '', markdownTimer: null};
 }
 
-function createMessageActions(content) {
+function createMessageActions(content, metadata = {}, messageElement) {
   const actions = document.createElement('div');
   actions.className = 'message-actions';
   actions.setAttribute('aria-label', t('message.actions'));
   actions.dataset.i18nAriaLabel = 'message.actions';
 
+  const revisions = Array.isArray(metadata.revisions) ? metadata.revisions : [];
+  if (revisions.length > 1) actions.append(createRevisionNavigator(revisions));
+
   const copy = messageActionButton('copy', 'message.copy', '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>');
   copy.addEventListener('click', () => copyMessageText(content, copy));
+  actions.append(copy);
 
-  const edit = messageActionButton('edit', 'message.edit', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>');
-  edit.addEventListener('click', () => editUserMessage(content));
-  actions.append(copy, edit);
+  if (metadata.messageId) {
+    const edit = messageActionButton('edit', 'message.edit', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>');
+    edit.addEventListener('click', () => editUserMessage(content, metadata, messageElement));
+    actions.append(edit);
+  }
   return actions;
+}
+
+function createRevisionNavigator(revisions) {
+  const ordered = [...revisions].sort((a, b) => Number(a.index) - Number(b.index));
+  const currentIndex = Math.max(0, ordered.findIndex((item) => item.active));
+  const navigation = document.createElement('span');
+  navigation.className = 'message-revisions';
+  navigation.setAttribute('aria-label', t('message.versions'));
+
+  const previous = revisionButton(t('message.previousVersion'), '‹');
+  const next = revisionButton(t('message.nextVersion'), '›');
+  previous.disabled = currentIndex <= 0;
+  next.disabled = currentIndex >= ordered.length - 1;
+  if (!previous.disabled) previous.addEventListener('click', () => activateMessageRevision(ordered[currentIndex - 1].messageId));
+  if (!next.disabled) next.addEventListener('click', () => activateMessageRevision(ordered[currentIndex + 1].messageId));
+
+  const position = document.createElement('span');
+  position.className = 'message-revision-position';
+  position.textContent = (currentIndex + 1) + ' / ' + ordered.length;
+  navigation.append(previous, position, next);
+  return navigation;
+}
+
+function revisionButton(label, symbol) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'message-revision-button';
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.textContent = symbol;
+  return button;
+}
+
+async function activateMessageRevision(messageId) {
+  if (state.busy || !state.activeConversationId) return;
+  try {
+    const detail = await apiJson('/api/conversations/' + encodeURIComponent(state.activeConversationId)
+      + '/messages/' + encodeURIComponent(messageId) + '/activate', {method: 'POST'});
+    state.inlineEditor = null;
+    renderConversationDetail(detail, state.activeConversationId);
+    setPageState('CHAT');
+    const target = messages.querySelector('[data-message-id="' + CSS.escape(String(messageId)) + '"]');
+    target?.scrollIntoView({block: 'center', behavior: 'smooth'});
+    await loadConversations();
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function messageActionButton(kind, labelKey, icon) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = `message-action ${kind}`;
+  button.className = 'message-action ' + kind;
   button.dataset.i18nAriaLabel = labelKey;
   button.setAttribute('aria-label', t(labelKey));
   button.innerHTML = icon;
@@ -941,19 +1033,80 @@ function fallbackCopyText(value) {
   if (!copied) throw new Error('COPY_FAILED');
 }
 
-function editUserMessage(content) {
+function editUserMessage(content, metadata, messageElement) {
   if (state.busy) {
     showToast(t('message.waitForReply'));
     return;
   }
-  input.value = String(content || '');
-  closeCommandPalette();
-  resizeInput();
-  input.focus();
-  input.setSelectionRange(input.value.length, input.value.length);
-  showToast(t('message.editLoaded'));
-}
+  if (!metadata?.messageId || !messageElement) {
+    showToast(t('message.editUnavailable'));
+    return;
+  }
+  state.inlineEditor?.cancel?.();
 
+  const body = messageElement.querySelector('.message-content');
+  const actions = messageElement.querySelector('.message-actions');
+  const editor = document.createElement('textarea');
+  editor.className = 'message-inline-editor';
+  editor.value = String(content || '');
+  editor.setAttribute('aria-label', t('message.editQuestion'));
+
+  const controls = document.createElement('div');
+  controls.className = 'message-inline-controls';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'message-inline-cancel';
+  cancel.textContent = t('common.cancel');
+  const submit = document.createElement('button');
+  submit.type = 'button';
+  submit.className = 'message-inline-submit';
+  submit.textContent = t('message.sendEdited');
+
+  const restore = () => {
+    body.classList.remove('inline-editing');
+    body.textContent = String(content || '');
+    if (actions) actions.hidden = false;
+    if (state.inlineEditor?.messageId === metadata.messageId) state.inlineEditor = null;
+  };
+  const submitEdit = async () => {
+    const value = editor.value.trim();
+    if (!value) {
+      showToast(t('message.emptyEdit'));
+      editor.focus();
+      return;
+    }
+    if (value === String(content || '').trim()) {
+      restore();
+      return;
+    }
+    state.inlineEditor = null;
+    await sendMessage(value, {
+      editMessageId: metadata.messageId,
+      agentId: metadata.agentId || null,
+      skillId: metadata.skillId || null
+    });
+  };
+
+  cancel.addEventListener('click', restore);
+  submit.addEventListener('click', submitEdit);
+  editor.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      restore();
+    } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      submitEdit();
+    }
+  });
+
+  controls.append(cancel, submit);
+  body.classList.add('inline-editing');
+  body.replaceChildren(editor, controls);
+  if (actions) actions.hidden = true;
+  state.inlineEditor = {messageId: metadata.messageId, cancel: restore};
+  editor.focus();
+  editor.setSelectionRange(editor.value.length, editor.value.length);
+}
 function renderMarkdown(markdown, target) {
   const raw = String(markdown || '');
   if (!window.marked?.parse || !window.DOMPurify?.sanitize) {
@@ -1303,7 +1456,7 @@ function addMessageMeta(element, data) {
   element.querySelector('.message-meta')?.remove();
   const sources = Array.isArray(data.sources) ? data.sources : [];
   const tools = Array.isArray(data.toolsUsed) ? data.toolsUsed : [];
-  if (!sources.length && !tools.length && !data.modelName && !data.traceId) return;
+  if (!sources.length && !tools.length) return;
   const meta = document.createElement('div');
   meta.className = 'message-meta';
   [...new Set(tools)].forEach((tool) => {
@@ -1317,11 +1470,6 @@ function addMessageMeta(element, data) {
     knowledgeChip.className = 'tool-chip';
     knowledgeChip.textContent = '文昌知识库';
     meta.append(knowledgeChip);
-  }
-  if (data.modelName) {
-    const model = document.createElement('span');
-    model.textContent = `${providerName(data.modelProvider)} · ${data.modelName}`;
-    meta.append(model);
   }
   if (sources.length) meta.append(sourceDetails(sources.slice(0, 6)));
   element.append(meta);
@@ -1406,17 +1554,12 @@ function addArtifactCards(element, artifacts) {
     const downloadUrl = safeArtifactUrl(artifact.downloadUrl)
       || (artifact.id || artifact.artifactId ? appUrl(`/api/artifacts/${encodeURIComponent(artifact.id || artifact.artifactId)}/download`) : '');
     if (downloadUrl) {
-      const open = document.createElement('a');
-      open.href = downloadUrl;
-      open.target = '_blank';
-      open.rel = 'noopener noreferrer';
-      open.textContent = '打开';
       const download = document.createElement('a');
       download.className = 'artifact-download';
       download.href = downloadUrl;
       download.download = artifact.filename || '';
-      download.textContent = '下载文件';
-      actions.append(open, download);
+      download.textContent = t('artifact.download');
+      actions.append(download);
     }
     card.append(icon, copy, actions);
     container.append(card);

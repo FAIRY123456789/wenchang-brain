@@ -559,3 +559,18 @@ html[dir="rtl"] .message-actions { justify-content: flex-start; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+.message-revisions { height: 28px; margin-right: 3px; padding: 2px 3px; display: inline-flex; align-items: center; gap: 2px; border: 1px solid rgba(188,213,225,.78); border-radius: 9px; color: #547483; background: rgba(255,255,255,.62); direction: ltr; }
+.message-revision-button { width: 23px; height: 22px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 6px; color: #2a7294; background: transparent; cursor: pointer; font: 700 18px/1 var(--font-sans); }
+.message-revision-button:hover:not(:disabled),.message-revision-button:focus-visible { outline: 0; color: #185f84; background: #e8f5fa; }
+.message-revision-button:disabled { color: #b4c5cd; cursor: default; }
+.message-revision-position { min-width: 34px; text-align: center; font: 750 10px/1 var(--font-sans); letter-spacing: .02em; }
+.message.user .message-content.inline-editing { width: min(560px,70vw); padding: 10px; border: 1px solid rgba(117,181,211,.78); background: rgba(255,255,255,.76); box-shadow: 0 8px 24px rgba(40,83,108,.09); }
+.message-inline-editor { width: 100%; min-height: 96px; max-height: 320px; padding: 9px 10px; resize: vertical; border: 0; border-radius: 10px; outline: 0; color: #214a62; background: rgba(246,251,253,.92); font: 500 16px/1.65 var(--font-sans); }
+.message-inline-editor:focus { box-shadow: inset 0 0 0 1px #88c3dc,0 0 0 3px rgba(38,135,180,.1); }
+.message-inline-controls { margin-top: 8px; display: flex; justify-content: flex-end; gap: 7px; }
+.message-inline-controls button { min-height: 32px; padding: 6px 12px; border: 1px solid #c9dee7; border-radius: 9px; cursor: pointer; font: 750 11px/1 var(--font-sans); }
+.message-inline-cancel { color: #557583; background: #fff; }
+.message-inline-submit { color: #fff; border-color: #287fa9 !important; background: #287fa9; }
+.message-inline-controls button:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(38,135,180,.14); }
+@media (max-width: 600px) { .message.user .message-content.inline-editing { width: min(82vw,560px); } .message-inline-editor { font-size: 15px; } }
