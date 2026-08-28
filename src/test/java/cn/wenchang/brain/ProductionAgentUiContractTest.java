@@ -49,7 +49,11 @@ class ProductionAgentUiContractTest {
                 "function agentContextCard(agent)", "function openAgentDetail(id, returnFocus",
                 "function addArtifactCards(element, artifacts)", "event === 'artifact_created'",
                 "event === 'approval_required'", "function runAgentDiagnostics()",
-                "function refreshConversationArtifacts(conversationId, preferredElement = null)");
+                "function refreshConversationArtifacts(conversationId, preferredElement = null)")
+                .contains("String(value.status || value.health || '').toUpperCase()")
+                .contains("function createMessageActions(content)", "function copyMessageText(content, button)",
+                        "function fallbackCopyText(value)", "function editUserMessage(content)")
+                .contains("if (role === 'user') element.append(createMessageActions(content || ''))");
         assertThat(app).contains("artifact-name", "artifact-meta", "artifact-download", "下载文件")
                 .contains("appUrl(`/api/artifacts/${encodeURIComponent")
                 .contains("function safeArtifactUrl(value)")
@@ -57,7 +61,8 @@ class ProductionAgentUiContractTest {
         assertThat(app).contains("/api/agent/approvals/${encodeURIComponent(id)}");
         assertThat(css).contains(
                 ".agent-context-card", ".agent-detail-panel", ".skill-detail-panel", ".artifact-card",
-                ".artifact-card .artifact-download", ".approval-panel", ".diagnostics-grid");
+                ".artifact-card .artifact-download", ".approval-panel", ".diagnostics-grid",
+                ".message-actions", ".message-action:focus-visible");
     }
 
     private static String read(String relativePath) throws IOException {

@@ -871,12 +871,87 @@ function appendMessage(role, content, metadata = null) {
   if (role === 'assistant') renderMarkdown(content || '', body);
   else body.textContent = content || '';
   element.append(body);
+  if (role === 'user') element.append(createMessageActions(content || ''));
   messages.append(element);
   if (role === 'assistant' && metadata?.agentRun) renderPersistedAgentRun(element, metadata.agentRun, metadata);
   if (metadata) addMessageMeta(element, metadata);
   if (role === 'assistant') addArtifactCards(element, metadata?.artifacts || []);
   if (!state.renderingHistory) scrollToLatest();
   return {element, content: body, rawMarkdownBuffer: content || '', markdownTimer: null};
+}
+
+function createMessageActions(content) {
+  const actions = document.createElement('div');
+  actions.className = 'message-actions';
+  actions.setAttribute('aria-label', t('message.actions'));
+  actions.dataset.i18nAriaLabel = 'message.actions';
+
+  const copy = messageActionButton('copy', 'message.copy', '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>');
+  copy.addEventListener('click', () => copyMessageText(content, copy));
+
+  const edit = messageActionButton('edit', 'message.edit', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>');
+  edit.addEventListener('click', () => editUserMessage(content));
+  actions.append(copy, edit);
+  return actions;
+}
+
+function messageActionButton(kind, labelKey, icon) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `message-action ${kind}`;
+  button.dataset.i18nAriaLabel = labelKey;
+  button.setAttribute('aria-label', t(labelKey));
+  button.innerHTML = icon;
+  const label = document.createElement('span');
+  label.dataset.i18n = labelKey;
+  label.textContent = t(labelKey);
+  button.append(label);
+  return button;
+}
+
+async function copyMessageText(content, button) {
+  try {
+    const value = String(content || '');
+    let copied = false;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        copied = true;
+      } catch { /* HTTP or permission-restricted browser: use the user-gesture fallback below. */ }
+    }
+    if (!copied) fallbackCopyText(value);
+    button.classList.add('success');
+    window.setTimeout(() => button.classList.remove('success'), 1200);
+    showToast(t('message.copied'));
+  } catch {
+    showToast(t('message.copyFailed'));
+  }
+}
+
+function fallbackCopyText(value) {
+  const area = document.createElement('textarea');
+  area.value = value;
+  area.setAttribute('readonly', '');
+  area.style.position = 'fixed';
+  area.style.opacity = '0';
+  document.body.append(area);
+  area.select();
+  const copied = document.execCommand('copy');
+  area.remove();
+  if (!copied) throw new Error('COPY_FAILED');
+}
+
+function editUserMessage(content) {
+  if (state.busy) {
+    showToast(t('message.waitForReply'));
+    return;
+  }
+  input.value = String(content || '');
+  closeCommandPalette();
+  resizeInput();
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  showToast(t('message.editLoaded'));
 }
 
 function renderMarkdown(markdown, target) {
@@ -1812,7 +1887,7 @@ function diagnosticAvailable(value) {
   if (typeof value === 'boolean') return value;
   if (value && typeof value === 'object') {
     return value.available === true || value.connected === true || value.ready === true
-      || ['UP', 'PASS', 'AVAILABLE', 'SUCCESS'].includes(String(value.status || '').toUpperCase());
+      || ['UP', 'PASS', 'AVAILABLE', 'SUCCESS'].includes(String(value.status || value.health || '').toUpperCase());
   }
   return ['UP', 'PASS', 'AVAILABLE', 'SUCCESS', '可用'].includes(String(value || '').toUpperCase());
 }

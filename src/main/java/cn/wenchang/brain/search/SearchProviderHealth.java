@@ -1,5 +1,7 @@
 package cn.wenchang.brain.search;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 
 public record SearchProviderHealth(
@@ -10,5 +12,6 @@ public record SearchProviderHealth(
         String lastError,
         String errorType
 ) {
+    @JsonProperty("available")
     public boolean available() { return "AVAILABLE".equals(health); }
 }

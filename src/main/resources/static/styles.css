@@ -166,6 +166,13 @@ html[data-hero-transition="true"] .hero-photo { transition: transform .5s ease; 
 .context-chip { padding: 5px 8px; border: 1px solid #d3e5ec; border-radius: 999px; color: #3e728c; background: #f4fafc; font-size: 10px; font-weight: 700; }
 .message-content { font-size: 17px; line-height: 1.78; overflow-wrap: anywhere; }
 .message.user .message-content { white-space: pre-wrap; }
+.message-actions { min-height: 30px; margin-top: 6px; display: flex; justify-content: flex-end; align-items: center; gap: 3px; }
+.message-action { min-height: 28px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid transparent; border-radius: 9px; color: #708a97; background: transparent; cursor: pointer; font: 700 10px/1 var(--font-sans); transition: color .16s ease, border-color .16s ease, background .16s ease, transform .16s ease, opacity .16s ease; }
+.message-action svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.message-action:hover { color: #246f94; border-color: rgba(158,202,222,.72); background: rgba(255,255,255,.72); transform: translateY(-1px); }
+.message-action:focus-visible { outline: 0; color: #1b688e; border-color: var(--color-accent); background: #fff; box-shadow: 0 0 0 3px rgba(38,135,180,.13); }
+.message-action.success { color: #2f8661; background: #eff9f3; }
+@media (hover:hover) and (pointer:fine) { .message.user:not(:hover):not(:focus-within) .message-actions { opacity: .36; } }
 .message.assistant .message-content { padding: 2px 4px; }
 .message.assistant .message-content > :first-child { margin-top: 0; }
 .message.assistant .message-content > :last-child { margin-bottom: 0; }
@@ -451,6 +458,7 @@ html[dir="rtl"] .settings-drawer { right: auto; left: 0; transform: translateX(-
 html[dir="rtl"] .settings-drawer.open { transform: translateX(0); }
 html[dir="rtl"] .command-symbol { direction: ltr; }
 html[dir="rtl"] .composer textarea, html[dir="rtl"] .message-content { text-align: right; }
+html[dir="rtl"] .message-actions { justify-content: flex-start; }
 
 @media (max-width: 900px) {
   .sidebar { width: 280px; transform: translateX(-103%); box-shadow: 22px 0 55px rgba(31,61,78,.14); transition: transform .28s ease; }

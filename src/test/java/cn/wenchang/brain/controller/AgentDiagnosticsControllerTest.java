@@ -3,6 +3,7 @@ package cn.wenchang.brain.controller;
 import cn.wenchang.brain.diagnostics.AgentDiagnosticReport;
 import cn.wenchang.brain.diagnostics.AgentDiagnosticsService;
 import cn.wenchang.brain.search.SearchProviderHealth;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -16,7 +17,7 @@ import static org.mockito.Mockito.when;
 class AgentDiagnosticsControllerTest {
 
     @Test
-    void returnsUnifiedStatusMatrixFromService() {
+    void returnsUnifiedStatusMatrixFromService() throws Exception {
         AgentDiagnosticsService service = mock(AgentDiagnosticsService.class);
         AgentDiagnosticReport.Check ok = AgentDiagnosticReport.Check.available(3, "ok");
         AgentDiagnosticReport report = new AgentDiagnosticReport(Instant.now(),
@@ -31,5 +32,7 @@ class AgentDiagnosticsControllerTest {
         when(service.run()).thenReturn(report);
 
         assertThat(new AgentDiagnosticsController(service).agent()).isSameAs(report);
+        String json = new ObjectMapper().findAndRegisterModules().writeValueAsString(report);
+        assertThat(json).contains("\"health\":\"AVAILABLE\"", "\"available\":true");
     }
 }
