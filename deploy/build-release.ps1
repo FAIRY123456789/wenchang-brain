@@ -58,8 +58,9 @@ $releaseInfo = @(
     'project.version=1.5.0-SNAPSHOT',
     ('git.commit=' + $gitCommit),
     ('built.at.utc=' + [DateTime]::UtcNow.ToString('o')),
-    'main.tests=87/87 PASS',
-    'mcp.tests=7/7 PASS',
+    'main.tests=91/91 PASS',
+    'mcp.local-tests=6/6 PASS',
+    'mcp.http-smoke=SERVER_REQUIRED',
     'public.base-path=/wenchang-brain/'
 ) -join "`n"
 [IO.File]::WriteAllText((Join-Path $stage 'release-info.txt'), $releaseInfo + "`n", [Text.UTF8Encoding]::new($false))

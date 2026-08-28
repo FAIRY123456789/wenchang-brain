@@ -1,3 +1,10 @@
+## 2026-08-28 · 1.5.4 编辑体验与任务边界修复
+
+- 真实诊断：用户截图中的第 3 个问题版本实际 `toolNames=[]`、`assistantArtifactCount=0`，没有重新生成 Word；Conversation Artifact API 仍返回旧分支的 1 个文件。Root Cause 是前端在当前消息无文件时按 conversationId 拉取全会话 Artifact，并错误挂到最新 Assistant。
+- 分支文件隔离：移除会话级 Artifact 回填。实时回答只接受本次 SSE `artifact_created/complete.artifacts`，历史恢复只读取当前活动分支 Message 的 `artifactsJson`；新增集成测试验证旧分支有 Word、新分支无 Word 时互不污染。
+- 用户边界：新增本轮明确否定优先规则。“不要联网”屏蔽 Web/Official/Collect 工具，“不要生成文件”屏蔽 Word/Excel/CSV/政策简报/研学包；规则同时作用于确定性预执行、Skill Tool 集、无 Skill 模型 ToolCallback，以及带服务器前缀的 MCP 工具名。系统提示同步明确约束，禁止虚假声称已联网或已生成文件。
+- 编辑体验：编辑区保持蓝色用户气泡视觉，宽度适度扩大；Enter 发送、Shift+Enter 换行、Esc 取消，并避开中文输入法合成态。五种界面语言的按钮统一改为“发送（Enter）”等对应文案。
+- 验收：JavaScript 语法检查 PASS；针对性测试 12/12 PASS；主应用 Maven 91/91 PASS；MCP 非网络业务测试 6/6 PASS。本机真实 HTTP 用例受 Windows 沙箱 Java NIO loopback 限制，转由 ECS canary 执行。未调用 DeepSeek/Tavily，不消耗用户免费额度。
 # PROJECT SUPERVISOR
 
 ## 2026-08-12 · Artifact 人类可读模板与回答下载链接

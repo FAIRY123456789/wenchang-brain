@@ -46,6 +46,11 @@ import java.util.function.Consumer;
 @Service
 public class WenchangAgentService {
 
+    private static final Set<String> ARTIFACT_TOOLS = Set.of(
+            "createWenchangWordReport", "exportWenchangData", "createStudyTourPackage", "createPolicyBrief");
+    private static final Set<String> NETWORK_TOOLS = Set.of(
+            "webSearch", "officialSourceSearch", "collectOfficialMaterials");
+
     private final RuntimeChatModelProvider modelProvider;
     private final RagService ragService;
     private final CapabilityRouter capabilityRouter;
@@ -221,7 +226,8 @@ public class WenchangAgentService {
             long llmStarted = System.nanoTime();
             ChatClient.ChatClientRequestSpec request = modelHandle.chatClient().prompt()
                     .system(profile.systemInstruction() + "\n输出风格：" + profile.responseStyle()
-                            + (skill == null ? "" : "\n当前技能：" + skill.systemInstruction()))
+                            + (skill == null ? "" : "\n当前技能：" + skill.systemInstruction())
+                            + userBoundaryInstruction(message))
                     .advisors(ragService.advisorFor(message, knowledgeCategories, skillCategoryConstraint))
                     .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, sessionId))
                     .tools(modelCallbacks(skill, prefetchedTools, message).toArray())
@@ -396,9 +402,11 @@ public class WenchangAgentService {
             Set<String> tools = new LinkedHashSet<>(skill.requiredTools());
             String artifactTool = requestedArtifactTool(skill, message);
             if (artifactTool != null) tools.add(artifactTool);
+            tools.removeIf(tool -> !toolAllowedByUserBoundary(tool, message));
             return List.copyOf(tools);
         }
-        return decision.required() ? List.of(decision.toolName()) : List.of();
+        return decision.required() && toolAllowedByUserBoundary(decision.toolName(), message)
+                ? List.of(decision.toolName()) : List.of();
     }
 
     private Map<String, Object> arguments(String toolName, String message, String conversationId,
@@ -583,7 +591,11 @@ public class WenchangAgentService {
     private List<org.springframework.ai.tool.ToolCallback> modelCallbacks(SkillDefinition skill,
                                                                           Set<String> prefetchedTools,
                                                                           String message) {
-        if (skill == null) return toolRegistry.callbacksExcluding(prefetchedTools);
+        if (skill == null) {
+            Set<String> excluded = new LinkedHashSet<>(prefetchedTools);
+            excluded.addAll(prohibitedToolNames(message));
+            return toolRegistry.callbacksExcluding(excluded);
+        }
         Set<String> allowed = allowedModelToolNames(skill, prefetchedTools, message);
         return toolRegistry.callbacksNamed(allowed);
     }
@@ -595,18 +607,54 @@ public class WenchangAgentService {
         String artifactTool = requestedArtifactTool(skill, request);
         if (artifactTool != null) allowed.add(artifactTool);
         allowed.removeAll(prefetchedTools);
+        allowed.removeIf(tool -> !toolAllowedByUserBoundary(tool, request));
         return allowed;
     }
 
     static String requestedArtifactTool(SkillDefinition skill, String message) {
         String request = message == null ? "" : message;
+        if (explicitlyDeniesArtifacts(request)) return null;
         if (request.matches("(?is).*(excel|xlsx|csv|数据表|表格|清单).*")) return "exportWenchangData";
         if (!request.matches("(?is).*(word|docx|文档|报告|简报).*")) return null;
-        if ("policy-brief".equals(skill.id())) return "createPolicyBrief";
-        if ("study-tour-plan".equals(skill.id())) return "createStudyTourPackage";
+        if (skill != null && "policy-brief".equals(skill.id())) return "createPolicyBrief";
+        if (skill != null && "study-tour-plan".equals(skill.id())) return "createStudyTourPackage";
         return "createWenchangWordReport";
     }
 
+    static boolean toolAllowedByUserBoundary(String toolName, String message) {
+        return !prohibitedToolNames(message).contains(toolName);
+    }
+
+    static Set<String> prohibitedToolNames(String message) {
+        Set<String> prohibited = new LinkedHashSet<>();
+        if (explicitlyDeniesArtifacts(message)) prohibited.addAll(ARTIFACT_TOOLS);
+        if (explicitlyDeniesNetwork(message)) prohibited.addAll(NETWORK_TOOLS);
+        return Set.copyOf(prohibited);
+    }
+
+    static boolean explicitlyDeniesArtifacts(String message) {
+        String request = message == null ? "" : message;
+        return request.matches("(?is).*(不要|不需要|无需|禁止|请勿|别|不想|不必|勿).{0,18}(生成|创建|制作|导出|提供|输出|产出)?.{0,8}(word|docx|excel|xlsx|csv|文件|文档|报告|简报|表格|清单).*")
+                || request.matches("(?is).*(do not|don't|without|no).{0,18}(word|docx|excel|xlsx|csv|file|document|report|brief|spreadsheet).*");
+    }
+
+    static boolean explicitlyDeniesNetwork(String message) {
+        String request = message == null ? "" : message;
+        return request.matches("(?is).*(不要|不需要|无需|禁止|请勿|别|不想|不必|勿).{0,18}(联网|网络|互联网|web ?search|网页|在线搜索|在线检索).*")
+                || request.matches("(?is).*(只|仅).{0,6}(使用|用)?.{0,8}(知识库|本地资料|已有资料).*")
+                || request.matches("(?is).*(do not|don't|without|no).{0,18}(web|internet|online|network).*");
+    }
+
+    private String userBoundaryInstruction(String message) {
+        StringBuilder instruction = new StringBuilder();
+        if (explicitlyDeniesNetwork(message)) {
+            instruction.append("\n用户本轮明确要求不要联网：禁止调用联网、网页或外部资料采集工具，也不得声称已联网。");
+        }
+        if (explicitlyDeniesArtifacts(message)) {
+            instruction.append("\n用户本轮明确要求不要生成文件：禁止创建 Word、Excel、CSV 或其他 Artifact，也不得提供虚假的文件链接。");
+        }
+        return instruction.toString();
+    }
     private String enforceArtifactTruth(String value, boolean artifactToolCalled, List<ArtifactDescriptor> artifacts) {
         String answer = value == null ? "" : value;
         if (!artifactToolCalled || !artifacts.isEmpty()) return answer;

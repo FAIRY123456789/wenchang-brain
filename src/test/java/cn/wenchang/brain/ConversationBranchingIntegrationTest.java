@@ -1,5 +1,6 @@
 package cn.wenchang.brain;
 
+import cn.wenchang.brain.artifact.ArtifactDescriptor;
 import cn.wenchang.brain.model.ChatResponseDto;
 import cn.wenchang.brain.model.MessageRevisionOption;
 import cn.wenchang.brain.service.ConversationMemoryService;
@@ -67,6 +68,34 @@ class ConversationBranchingIntegrationTest {
                 .containsExactly("修改后的问题", "修改后的回答");
     }
 
+    @Test
+    void revisedBranchDoesNotInheritArtifactFromOriginalAnswer() {
+        var conversation = conversations.resolveForChat(null, "生成生态报告 Word", "ecology");
+        Long originalQuestion = conversations.appendUser(conversation.id(), "生成生态报告 Word",
+                "ecology", null, null);
+        ArtifactDescriptor artifact = new ArtifactDescriptor("artifact-original", conversation.id(), "WORD",
+                "文昌生态报告.docx", "文昌生态报告",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 6144,
+                "2026-08-28T00:00:00Z", "/api/artifacts/artifact-original/download", false, 6,
+                "ecology", null);
+        ChatResponseDto originalResponse = new ChatResponseDto("原回答附带文件", List.of(),
+                List.of("createWenchangWordReport"), "trace-original", 1, "REMOTE_DEFAULT", "deepseek",
+                "deepseek-chat", conversation.id(), "ecology", null, null, List.of(artifact));
+        conversations.appendAssistant(conversation.id(), originalResponse, originalQuestion);
+
+        conversations.prepareEdit(conversation.id(), originalQuestion);
+        Long revisedQuestion = conversations.appendUser(conversation.id(),
+                "梳理生态修复依据，不要联网，不要生成 Word 文档", "ecology", null, originalQuestion);
+        conversations.appendAssistant(conversation.id(), response("新版纯文本回答"), revisedQuestion);
+
+        var revised = conversations.detail(conversation.id());
+        assertThat(revised.messages()).extracting(message -> message.content())
+                .containsExactly("梳理生态修复依据，不要联网，不要生成 Word 文档", "新版纯文本回答");
+        assertThat(revised.messages().get(1).artifactsJson()).isEqualTo("[]");
+
+        var original = conversations.activateRevision(conversation.id(), originalQuestion);
+        assertThat(original.messages().get(1).artifactsJson()).contains("artifact-original", "文昌生态报告.docx");
+    }
     @Test
     void editingLaterQuestionRestoresOnlySharedPrefixIntoModelMemory() {
         var conversation = conversations.resolveForChat(null, "第一问", "policy");

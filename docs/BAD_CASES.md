@@ -278,3 +278,10 @@
 - 修复：编辑器改在当前用户消息气泡内展开；后端建立持久化消息树、问题版本组和活动叶节点；切换分支时只恢复当前路径，旧分支继续保留。
 - 额外修复：编辑第一条问题时，共享前缀为空。初版用 null 同时表达“未初始化”和“根分支”，会误选回旧叶节点；现使用显式内部根分支状态，空前缀恢复为 0 条消息。
 - 回归：两项集成测试覆盖首问编辑、后续问题编辑、旧/新分支切换、刷新 DTO、Agent/Skill 上下文与 ChatMemory 计数；全量 87/87 PASS。
+## 36. 编辑新分支错误显示旧分支 Word 文件
+
+- 问题：用户把 Ecology Researcher 的原问题编辑为“不要联网，不要生成 Word 文档”后，当前回答下方仍出现与旧版本相同的 6 KB、6 来源 Word，表面看起来像 Agent 忽略了边界并重复执行旧任务。
+- 实际证据：生产会话当前为第 3/3 版本；当前 Assistant 的 Tool 列表为空、Artifact 数为 0、回答没有下载链接，而 Conversation 级 Artifact 列表仍有旧分支的 1 个文件。因此不是 DeepSeek、ChatMemory 或 MCP 重复生成，而是前端展示串支。
+- Root Cause：`refreshConversationArtifacts(conversationId)` 在当前回答没有 Artifact 时查询整个 Conversation 的历史文件，再按 Agent/Skill/最新回答猜测挂载目标；它没有 Message/branch 归属，必然可能把旧分支文件挂到新分支。
+- 修复：删除这条会话级兜底。实时回答只显示当前 SSE 事件带回的 Artifact，历史只显示活动分支 Message 的 `artifactsJson`。同时将“不要联网/不要生成文件”提升为当前请求硬边界，并修复 MCP 前缀工具的排除匹配。
+- 回归：新增旧分支有 Word、新分支 `artifactsJson=[]` 的持久化集成测试；新增中文否定边界、正向 Word 路由、MCP 前缀排除、前端无 conversation-wide fallback、Enter/IME 与蓝色编辑态契约。主应用 Maven 91/91 PASS。

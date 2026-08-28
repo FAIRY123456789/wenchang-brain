@@ -38,6 +38,28 @@ class SkillArtifactRoutingTest {
     }
 
     @Test
+    void explicitNegativeInstructionsOverrideArtifactAndNetworkSkills() {
+        var research = skills.require("deep-research");
+        var word = skills.require("word-report");
+        String request = "梳理文昌红树林保护与修复依据，不要联网，不要生成word文档";
+
+        assertThat(WenchangAgentService.requestedArtifactTool(word, request)).isNull();
+        assertThat(WenchangAgentService.explicitlyDeniesArtifacts(request)).isTrue();
+        assertThat(WenchangAgentService.explicitlyDeniesNetwork(request)).isTrue();
+        assertThat(WenchangAgentService.allowedModelToolNames(research, Set.of(), request))
+                .doesNotContain("webSearch", "officialSourceSearch", "collectOfficialMaterials",
+                        "createWenchangWordReport", "exportWenchangData", "createStudyTourPackage", "createPolicyBrief");
+        assertThat(WenchangAgentService.allowedModelToolNames(word, Set.of(), request))
+                .doesNotContain("createWenchangWordReport");
+    }
+
+    @Test
+    void positiveArtifactRequestStillRoutesNormally() {
+        var word = skills.require("word-report");
+        assertThat(WenchangAgentService.requestedArtifactTool(word, "生成 Word 报告"))
+                .isEqualTo("createWenchangWordReport");
+    }
+    @Test
     void professionalTitleDoesNotEchoImperativePrompt() {
         var composer = new cn.wenchang.brain.artifact.ArtifactReportComposer();
         assertThat(composer.professionalTitle("请你按高中阶段定向检索教育部门资料，并生成一份带官方来源的文昌市高中名单报告 Word。必须实际生成可下载文件。"))

@@ -49,7 +49,7 @@ class ProductionAgentUiContractTest {
                 "function agentContextCard(agent)", "function openAgentDetail(id, returnFocus",
                 "function addArtifactCards(element, artifacts)", "event === 'artifact_created'",
                 "event === 'approval_required'", "function runAgentDiagnostics()",
-                "function refreshConversationArtifacts(conversationId, preferredElement = null)")
+                "const artifacts = parseJson(message.artifactsJson || message.artifactJson || message.artifacts, [])")
                 .contains("String(value.status || value.health || '').toUpperCase()")
                 .contains("function createMessageActions(content, metadata = {}, messageElement)", "function copyMessageText(content, button)",
                         "function fallbackCopyText(value)", "function editUserMessage(content, metadata, messageElement)",
@@ -59,13 +59,17 @@ class ProductionAgentUiContractTest {
                 .doesNotContain("open.textContent = '打开'")
                 .contains("appUrl(`/api/artifacts/${encodeURIComponent")
                 .contains("function safeArtifactUrl(value)")
-                .contains("artifactCount ? ` · ${artifactCount} 个文件`");
+                .contains("artifactCount ? ` · ${artifactCount} 个文件`")
+                .doesNotContain("refreshConversationArtifacts", "/api/artifacts?conversationId=");
         assertThat(app).contains("/api/agent/approvals/${encodeURIComponent(id)}");
         assertThat(css).contains(
                 ".agent-context-card", ".agent-detail-panel", ".skill-detail-panel", ".artifact-card",
                 ".artifact-card .artifact-download", ".approval-panel", ".diagnostics-grid",
                 ".message-actions", ".message-action:focus-visible", ".message-revisions",
                 ".message-inline-editor", ".message-inline-submit");
+        assertThat(app).contains("!event.shiftKey", "!event.isComposing", "event.keyCode !== 229",
+                "messageElement.classList.add('editing')");
+        assertThat(css).contains(".message.user.editing", "background: linear-gradient(145deg");
     }
 
     private static String read(String relativePath) throws IOException {

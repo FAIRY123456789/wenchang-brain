@@ -244,7 +244,6 @@ function renderConversationDetail(detail, id) {
   } finally {
     state.renderingHistory = false;
   }
-  if (!messages.querySelector('.artifact-card')) void refreshConversationArtifacts(id);
   main.classList.add('chatting');
   renderHistory();
 }
@@ -843,9 +842,6 @@ async function sendMessage(raw, options = {}) {
         addMessageMeta(assistant.element, {...data, agentId: data.agentId || agent.id, skillId: data.skillId || skill?.id});
         const completedArtifacts = data.artifacts || data.agentRun?.artifacts || [];
         addArtifactCards(assistant.element, completedArtifacts);
-        if (!Array.isArray(completedArtifacts) || !completedArtifacts.length) {
-          await refreshConversationArtifacts(state.activeConversationId, assistant.element);
-        }
         await reloadActiveConversation();
         await loadConversations();
       } else if (event === 'error') {
@@ -1063,6 +1059,7 @@ function editUserMessage(content, metadata, messageElement) {
   submit.textContent = t('message.sendEdited');
 
   const restore = () => {
+    messageElement.classList.remove('editing');
     body.classList.remove('inline-editing');
     body.textContent = String(content || '');
     if (actions) actions.hidden = false;
@@ -1093,13 +1090,14 @@ function editUserMessage(content, metadata, messageElement) {
     if (event.key === 'Escape') {
       event.preventDefault();
       restore();
-    } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    } else if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) {
       event.preventDefault();
       submitEdit();
     }
   });
 
   controls.append(cancel, submit);
+  messageElement.classList.add('editing');
   body.classList.add('inline-editing');
   body.replaceChildren(editor, controls);
   if (actions) actions.hidden = true;
@@ -1580,27 +1578,6 @@ function artifactTypeLabel(artifact = {}) {
   if (type === 'CSV') return 'CSV 数据';
   if (type === 'PDF') return 'PDF 文档';
   return type || '任务文件';
-}
-
-async function refreshConversationArtifacts(conversationId, preferredElement = null) {
-  if (!conversationId) return;
-  try {
-    const artifacts = await apiJson(`/api/artifacts?conversationId=${encodeURIComponent(conversationId)}`);
-    if (!Array.isArray(artifacts) || !artifacts.length) return;
-    if (preferredElement) {
-      addArtifactCards(preferredElement, artifacts);
-      return;
-    }
-    const assistants = [...messages.querySelectorAll('.message.assistant')];
-    artifacts.forEach((artifact) => {
-      const target = [...assistants].reverse().find((item) => artifact.skillId && item.dataset.skillId === artifact.skillId)
-        || [...assistants].reverse().find((item) => artifact.createdByAgent && item.dataset.agentId === artifact.createdByAgent)
-        || assistants.at(-1);
-      if (target) addArtifactCards(target, [artifact]);
-    });
-  } catch {
-    // Artifact API can be absent during startup; message rendering remains available.
-  }
 }
 
 function artifactIcon(artifact) {

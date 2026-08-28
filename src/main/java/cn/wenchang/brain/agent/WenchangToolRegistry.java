@@ -84,14 +84,14 @@ public class WenchangToolRegistry {
         Set<String> names = new LinkedHashSet<>();
         for (ToolCallback callback : nativeTools.values()) {
             String name = callback.getToolDefinition().name();
-            if (!excludedToolNames.contains(name)) {
+            if (!matchesToolName(excludedToolNames, name)) {
                 names.add(name);
                 combined.add(callback);
             }
         }
         for (ToolCallback callback : mcpTools()) {
             String name = callback.getToolDefinition().name();
-            if (excludedToolNames.contains(name)) continue;
+            if (matchesToolName(excludedToolNames, name)) continue;
             if (!names.add(name)) {
                 // MCP 默认前缀只保证 MCP 之间唯一；Registry 还必须保护 Native Tool 名称。
                 log.warn("Ignoring MCP tool with conflicting name: {}", name);
@@ -102,6 +102,12 @@ public class WenchangToolRegistry {
         return List.copyOf(combined);
     }
 
+    static boolean matchesToolName(Set<String> requestedNames, String registeredName) {
+        if (requestedNames == null || requestedNames.isEmpty() || registeredName == null) return false;
+        return requestedNames.contains(registeredName) || requestedNames.stream()
+                .filter(name -> name != null && !name.isBlank())
+                .anyMatch(name -> registeredName.endsWith("_" + name));
+    }
     public List<ToolCallback> callbacksNamed(Set<String> allowedToolNames) {
         if (allowedToolNames == null || allowedToolNames.isEmpty()) return List.of();
         return callbacksExcluding(Set.of()).stream().filter(callback -> {
