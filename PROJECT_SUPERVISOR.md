@@ -175,3 +175,14 @@
 - 公网状态：`http://120.26.238.159/wenchang-brain/` 返回新版语言控件及版本化资源 HTTP 200；DeepSeek=`REMOTE_DEFAULT/deepseek-chat`，RAG=50 files/136 chunks，MCP Health=UP；已有 `/` 与 `/future-bay-eco-lab/` 仍为 HTTP 200。
 - 回滚：`/opt/wenchang-brain/backups/rollback-20260821T121238Z.properties`。生产 Secret 内容未读取、未输出，权限策略未改变。
 - 浏览器说明：桌面应用的可视化浏览器控制连接被本机沙箱组件错误阻断，本轮未把自动点击冒充为 PASS；以无存储运行时测试、隔离 canary 和公网静态资源实测作为自动化证据，并保留用户端最终视觉确认入口。
+## 2026-08-28 · 联网自检状态契约与用户消息操作
+
+- 真实 Root Cause：SearchProviderHealth 的 JSON 状态字段名为 health，而前端 diagnosticAvailable() 只读取 available / connected / ready / status。因此搜索真实返回 health=AVAILABLE 时仍会被页面误判为“异常”；这是诊断展示契约错配，不是 Tavily 联网能力本身失败。
+- 契约修复：后端为 available() 显式输出 JSON 布尔字段 available；前端同时兼容 available / health / status，保留对旧响应的向后兼容。服务重启后 /api/health 的搜索状态为 UNKNOWN / NOT_CHECKED，不会把“尚未检查”当作历史故障。
+- 消息操作：每条用户问题右下角新增“复制”和“编辑”。复制优先使用 Clipboard API，并在公网 HTTP 环境下回退到用户手势内的兼容复制；编辑会把原问题载入 Composer、聚焦并移动光标到末尾，等待用户确认后重新发送，不删除或篡改历史消息。
+- 国际化与 UI：五种系统语言均补齐操作文案；按钮为轻量图标文本样式，支持 Hover、键盘焦点、完成反馈、移动端和 RTL。
+- 本地验收：JavaScript 语法、Git diff 检查、诊断 JSON 序列化契约和消息 UI 契约均 PASS；Maven clean package 85/85 PASS，未调用真实 DeepSeek/Tavily。
+- Release：1.5.2-diagnostics-actions-20260828，源码 Commit=45447d5610960a6fbe6f60ee86269d7b2f78bb0e，归档 SHA-256=10be8e37474027cc8c3193aac541452724006b15e874da505f1c9997c0e1c1c3。
+- 灰度与生产：隔离 canary 127.0.0.1:18082 在无 Secret、无 MCP、无 Search 状态下验证 health + available 双字段、新版 HTML/JS/CSS 和消息操作资源后关闭；正式 Main/MCP/Nginx 均 active，NRestarts=0，公网版本资源和既有两个站点均 HTTP 200。
+- 回滚：/opt/wenchang-brain/backups/rollback-20260828T005816Z.properties。生产 Secret 未读取、未输出、未进入 Release。
+- 浏览器限制：桌面应用的浏览器自动控制连接连续两次被本机运行组件终止，未把自动点击冒充为 PASS；公网静态资源、隔离运行时、后端序列化和 UI 合同测试构成自动化验收证据。

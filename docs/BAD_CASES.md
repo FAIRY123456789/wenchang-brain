@@ -257,3 +257,10 @@
 - UI：语言入口改为玻璃质感五语按钮组，具有选中勾选、键盘焦点、ARIA radio 状态、移动适配与 RTL 布局。
 - 回归：在本地存储读写均抛错的模拟环境中，英语、阿拉伯语、葡语切换与 RTL 均 PASS；Maven 85/85 PASS；ECS canary 与公网 HTML/JS/CSS 均返回新版本标记，生产服务 NRestarts=0。
 - 当前状态：已部署 Release `1.5.1-language-ui-fix-20260821`；可视化浏览器自动控制因本机沙箱组件故障未执行，未虚报为通过。
+## 33. 联网搜索可用但智能体自检显示异常
+
+- 问题：设置页“智能体自检”中，联网搜索显示红色“异常”和 0 ms，但同一生产环境的 Tavily 搜索可以返回真实结果。
+- 根因：后端 SearchProviderHealth 序列化字段为 health，值为 AVAILABLE / UNAVAILABLE / UNKNOWN；前端判定函数未读取 health，只读取 status 等字段。health=AVAILABLE 因此落入默认 false，形成纯展示层误报。
+- 修复：后端显式增加 available 布尔字段，前端兼容读取 available / health / status。搜索能力仍由真实 Provider 健康检查决定，不把 MCP、模型或历史错误混入判断。
+- 回归：ObjectMapper 真实序列化同时包含 health=AVAILABLE 与 available=true；前端 UI 合同验证 value.health 分支；Maven 85/85 PASS；ECS canary 验证实际 JAR 的诊断 JSON 包含新字段。
+- 发布：1.5.2-diagnostics-actions-20260828 已上线。为节省用户的免费 DeepSeek/Tavily 额度，本轮发布后未再次触发生产自检的外部探针；用户下次点击“再次检查”即会使用新契约显示真实状态。

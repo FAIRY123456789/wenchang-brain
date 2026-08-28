@@ -185,3 +185,17 @@ sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-<timestamp>.pr
 - 运行状态：DeepSeek `REMOTE_DEFAULT/deepseek-chat`；RAG `READY`，50 files/136 chunks；MCP `UP`；没有读取或输出 Secret 明文。
 - 回滚：`sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260821T121238Z.properties`
 - 验收限制：桌面应用的可视化浏览器连接被本机沙箱组件故障阻断；未将自动点击标记为 PASS。公网内容、无存储运行时和 canary 证据均已通过，用户端可直接刷新并验证视觉交互。
+## 2026-08-28 · 诊断状态与消息操作热修复
+
+- Release：1.5.2-diagnostics-actions-20260828
+- Git Commit：45447d5610960a6fbe6f60ee86269d7b2f78bb0e
+- Archive SHA-256：10be8e37474027cc8c3193aac541452724006b15e874da505f1c9997c0e1c1c3
+- 变更：修复 SearchProvider health 与 UI 判定字段错配；每条用户问题新增复制和编辑入口，编辑仅载入 Composer 并保留历史。
+- 本地门禁：Maven 85/85 PASS；Node 语法与 Git diff 检查 PASS；本轮未调用 DeepSeek/Tavily。
+- Canary：127.0.0.1:18082，独立 H2/Vector/Artifact/Research/Trace，不加载生产 Secret、MCP 或 Search；诊断双字段、新版 HTML/JS/CSS、复制/编辑资源均 PASS 后停止。
+- 正式切换：Main/MCP/Nginx active，NRestarts=0；当前 JAR 指向 /opt/wenchang-brain/releases/1.5.2-diagnostics-actions-20260828/。
+- 公网：http://120.26.238.159/wenchang-brain/ 和版本化 JS/CSS HTTP 200；/ 与 /future-bay-eco-lab/ 保持 HTTP 200。
+- 运行状态：DeepSeek=REMOTE_DEFAULT/deepseek-chat；RAG=LOADED，50 files/136 chunks；搜索在进程重启后为 UNKNOWN / NOT_CHECKED，等待用户下次自检按真实 Provider 结果更新。
+- 回滚：sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260828T005816Z.properties
+- Secret：生产 Key 未读取、未输出、未进入 Release；服务器配置未使用 nano。
+- 验收限制：桌面应用浏览器自动控制连接连续两次被运行组件终止，未将可视化自动点击标记为 PASS。
