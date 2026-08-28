@@ -199,3 +199,16 @@ sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-<timestamp>.pr
 - 回滚：sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260828T005816Z.properties
 - Secret：生产 Key 未读取、未输出、未进入 Release；服务器配置未使用 nano。
 - 验收限制：桌面应用浏览器自动控制连接连续两次被运行组件终止，未将可视化自动点击标记为 PASS。
+## 2026-08-28 · Artifact UI 与持久化问题版本发布
+
+- Release：`1.5.3-conversation-branches-20260828`
+- 源码 Commit：`2e36b4823a5589ebca371d4f45d2046da194fb7c`
+- 归档 SHA-256：`b08ed244662ae68b695c4b50060c0810e42b440948ca13d4a547bf4639b69600`
+- 本地门禁：Maven clean package 87/87 PASS；Node `app.js / i18n.js` 语法 PASS；Git diff check PASS；未调用 DeepSeek/Tavily。
+- Canary：`127.0.0.1:18082`，无 Secret、禁用 Search/MCP、独立内存 H2 与运行目录；新版缓存标识、原位编辑、分支切换资源和 Agent/Skill API 通过，生产服务全程 active，验收后停止。
+- 数据库迁移：Hibernate update 为现有 H2 增加 Message parent/revision 字段及 Conversation active leaf；上线后原有 15 个 Conversation 可读取，未清空或覆盖历史数据。
+- 正式状态：Main/MCP/Nginx active，NRestarts=0；18080/18091 继续只监听 loopback；Nginx `-t` PASS；Secret 保持 `0600 wenchang:wenchang`。
+- 公网验收：产品、版本化 JS/CSS、Health、Conversation、原有 `/` 与 `/future-bay-eco-lab/` 共七项 HTTP 200；资源中存在 inline editor 与 activate API，不再包含重复“打开”按钮或模型标签渲染。
+- 回滚：`sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260828T060901Z.properties`
+- 浏览器限制：桌面浏览器控制运行内核被 Windows 沙箱 helper 错误终止，未执行可视化自动点击，也未虚报为 PASS；由 87 项回归、canary 和公网静态/HTTP 契约覆盖自动化验收。
+- Secret：未读取、未输出、未进入归档；未查看生产日志或 Trace；服务器配置未使用 nano。

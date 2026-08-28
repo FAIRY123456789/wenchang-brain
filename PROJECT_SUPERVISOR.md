@@ -196,3 +196,11 @@
 - 记忆隔离：ChatMemory 仅从 active leaf 反向恢复当前分支，编辑较早问题时只保留其共享前缀，防止旧分支回答污染新请求。
 - 兼容迁移：旧线性 Conversation 在首次读取时自动补齐父子关系和问题版本标识；Hibernate update 为现有 H2 增加可空字段，不删除历史消息。
 - 本地验收：分支持久化与记忆隔离集成测试 2/2 PASS；消息 UI、五语、子路径与请求契约定向测试 8/8 PASS；Maven clean package 87/87 PASS；未调用 DeepSeek/Tavily。
+## 2026-08-28 · 1.5.3 公网发布结果
+
+- Release `1.5.3-conversation-branches-20260828` 已从隔离 canary 切换至正式环境，源码 `2e36b48`，归档 SHA-256 `b08ed244…b69600`。
+- 生产 Main/MCP/Nginx 均 active，NRestarts=0；Secret 权限与属主保持 `0600 wenchang:wenchang`，未读取内容。
+- 旧 H2 经 Hibernate 增量迁移后仍可读取 15 个 Conversation；新字段只用于消息父链、问题版本与活动分支，没有删除历史消息。
+- 公网七项 URL 全部 HTTP 200；新版 JS 确认原位编辑与 `/activate` 分支接口存在，重复“打开”和模型灰字渲染不存在。
+- 回滚元数据：`/opt/wenchang-brain/backups/rollback-20260828T060901Z.properties`。
+- 浏览器自动控制因本机 Windows 沙箱 helper 故障未能建立，未标记可视化自动点击 PASS；全量测试、canary 与公网契约均已通过。
