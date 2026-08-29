@@ -226,3 +226,17 @@ sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-<timestamp>.pr
 - 回滚：`sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260828T093542Z.properties`
 - 浏览器限制：桌面浏览器控制内核被 Windows sandbox helper 连续终止，未把可视化点击虚报为 PASS；UI 合同测试、实际 JAR、canary 与公网 HTTP 均已通过。
 - Secret：未读取、未输出、未进入 Release；未查看生产 Trace；服务器配置未使用 nano。
+## 2026-08-29 · 单层原位编辑视觉热修复
+
+- Release：`1.5.5-single-surface-editor-20260829`
+- 源码 Commit：`3f344a5`
+- 归档 SHA-256：`471dfa8a6a6cf8eacb8cdc39dfbaf2d387dc6ebffe2195983ca978546135e0fb`
+- 变更：移除原位编辑 textarea 的内层边框、圆角、背景、阴影与缩放柄；焦点反馈迁移到外层蓝色消息气泡，形成单一编辑表面。
+- 本地门禁：UI 合同 2/2 PASS；主应用 Maven clean package 91/91 PASS；Secret assignment 扫描 0 命中；未调用 DeepSeek/Tavily。
+- Canary：`127.0.0.1:18082`，内存 H2、独立 Artifact/Research/Trace、禁用 Search/MCP、不加载生产 Secret；归档哈希、包内 checksums、Health 与单层 CSS 契约 PASS 后停止。
+- MCP 正式验收：Streamable HTTP `initialize / initialized / tools/list / tools/call` 全部 PASS；只读 `searchTownshipProfile(龙楼镇)` 成功。
+- 正式状态：Main/MCP/Nginx active，NRestarts=0；应用与 MCP JAR 均指向 `/opt/wenchang-brain/releases/1.5.5-single-surface-editor-20260829/`。
+- 公网：`/wenchang-brain/`、CSS、Health 与既有 `/`、`/future-bay-eco-lab/` 全部 HTTP 200；公网 CSS 不含旧内层背景声明。
+- 回滚：`sudo bash deploy/rollback.sh /opt/wenchang-brain/backups/rollback-20260829T015318Z.properties`
+- 浏览器限制：桌面浏览器控制内核被 Windows sandbox helper 终止，未把可视化自动点击标记为 PASS；UI 契约、实际 JAR canary、正式静态资源及公网 HTTP 均已通过。
+- Secret：未读取、未输出、未进入 Release；未查看生产日志或 Trace；服务器配置未使用 nano。

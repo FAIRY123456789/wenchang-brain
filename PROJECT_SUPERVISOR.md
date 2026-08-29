@@ -3,7 +3,12 @@
 - 用户反馈：原位编辑态同时绘制外层蓝色消息气泡和内层白蓝色 textarea 边框，形成突兀的“双层输入框”，与正常对话气泡视觉不一致。
 - Root Cause：`.message-content.inline-editing` 与 `.message-inline-editor` 分别设置了边框、圆角、背景和焦点阴影；textarea 还保留浏览器缩放柄，进一步强化了内层框感。
 - 修复：外层气泡成为唯一编辑容器；textarea 改为透明、无边框、无圆角、无阴影且禁止手动缩放。键盘焦点通过 `:focus-within` 只反馈到外层气泡，保留可访问性与 Enter/Shift+Enter/Esc 行为。
-- 验收：UI 契约测试 2/2 PASS；主应用 Maven 91/91 PASS。公网发布结果在部署完成后补充。
+- 本地验收：UI 契约测试 2/2 PASS；主应用 Maven 91/91 PASS；Secret assignment 扫描 0 命中。
+- 发布：Release `1.5.5-single-surface-editor-20260829`，源码 `3f344a5`，归档 SHA-256 `471dfa8a…135e0fb`。隔离 canary 完成归档哈希、包内 checksums、Health 与单层 CSS 契约后停止。
+- 正式验收：Main/MCP/Nginx active，NRestarts=0；正式 JAR 指向 V1.5.5。MCP `initialize / initialized / tools/list / tools/call` PASS；只读乡镇查询成功。
+- 公网验收：`/wenchang-brain/`、CSS、Health 与既有 `/`、`/future-bay-eco-lab/` 全部 HTTP 200；公网 CSS 已确认旧内层背景不存在。
+- 回滚：`/opt/wenchang-brain/backups/rollback-20260829T015318Z.properties`。生产 Key、日志与 Trace 均未读取或输出，未调用 DeepSeek/Tavily。
+- 浏览器限制：桌面浏览器控制内核仍被 Windows sandbox helper 终止，未虚报可视化自动点击为 PASS；由 UI 契约、实际 JAR canary、正式静态资源与公网 HTTP 覆盖自动化验收。
 ## 2026-08-28 · 1.5.4 公网发布结果
 
 - Release `1.5.4-edit-boundaries-20260828` 已从隔离 canary 切换至正式环境，源码 `d105bf9`，归档 SHA-256 `edad31c1…65951e`。
