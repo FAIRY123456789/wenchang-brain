@@ -1,3 +1,9 @@
+## 2026-08-29 · 1.5.5 单层原位编辑视觉修复
+
+- 用户反馈：原位编辑态同时绘制外层蓝色消息气泡和内层白蓝色 textarea 边框，形成突兀的“双层输入框”，与正常对话气泡视觉不一致。
+- Root Cause：`.message-content.inline-editing` 与 `.message-inline-editor` 分别设置了边框、圆角、背景和焦点阴影；textarea 还保留浏览器缩放柄，进一步强化了内层框感。
+- 修复：外层气泡成为唯一编辑容器；textarea 改为透明、无边框、无圆角、无阴影且禁止手动缩放。键盘焦点通过 `:focus-within` 只反馈到外层气泡，保留可访问性与 Enter/Shift+Enter/Esc 行为。
+- 验收：UI 契约测试 2/2 PASS；主应用 Maven 91/91 PASS。公网发布结果在部署完成后补充。
 ## 2026-08-28 · 1.5.4 公网发布结果
 
 - Release `1.5.4-edit-boundaries-20260828` 已从隔离 canary 切换至正式环境，源码 `d105bf9`，归档 SHA-256 `edad31c1…65951e`。

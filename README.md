@@ -35,6 +35,8 @@ Composer 上方的 Command Bar 是智能体与技能的统一入口：默认状�
 
 Agent 详情使用英文名称和中文能力说明，展示能完成的任务、适合输入、技能、工具、输出文件、典型流程、人工确认规则、示例和完成判据。“开始使用”只把 Agent 带回当前 Composer；历史会话恢复时会恢复所选 Agent、Skill、Agent Run 与 Artifact。
 
+用户消息支持原位编辑与问题版本切换。编辑态沿用单一蓝色消息气泡作为输入表面，内部输入区透明无边框；Enter 发送、Shift+Enter 换行、Esc 取消，编辑后的分支拥有独立历史、工具结果与 Artifact。
+
 ## Agent Profile
 
 - `wenchang`：Wenchang Assistant，综合文昌知识、实时信息与任务执行。

@@ -285,3 +285,9 @@
 - Root Cause：`refreshConversationArtifacts(conversationId)` 在当前回答没有 Artifact 时查询整个 Conversation 的历史文件，再按 Agent/Skill/最新回答猜测挂载目标；它没有 Message/branch 归属，必然可能把旧分支文件挂到新分支。
 - 修复：删除这条会话级兜底。实时回答只显示当前 SSE 事件带回的 Artifact，历史只显示活动分支 Message 的 `artifactsJson`。同时将“不要联网/不要生成文件”提升为当前请求硬边界，并修复 MCP 前缀工具的排除匹配。
 - 回归：新增旧分支有 Word、新分支 `artifactsJson=[]` 的持久化集成测试；新增中文否定边界、正向 Word 路由、MCP 前缀排除、前端无 conversation-wide fallback、Enter/IME 与蓝色编辑态契约。主应用 Maven 91/91 PASS。
+## 37. 原位编辑出现双层输入框
+
+- 问题：用户消息进入编辑态后，外部蓝色消息气泡内部又出现一层带边框、圆角、底色和缩放柄的 textarea，看起来像两个输入框叠在一起。
+- Root Cause：外层 `.message-content.inline-editing` 已承担编辑容器视觉，内层 `.message-inline-editor` 却重复设置边框、背景与 focus 阴影。
+- 修复：内层输入区改为透明、无边框、无圆角、无阴影、不可手动缩放；焦点环迁移到外层 `:focus-within`，页面只保留一个蓝色编辑框。
+- 回归：新增样式契约，断言透明内层、无 resize、外层 focus-within，并禁止旧 inset 焦点阴影；主应用 Maven 91/91 PASS。

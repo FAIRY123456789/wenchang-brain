@@ -69,7 +69,14 @@ class ProductionAgentUiContractTest {
                 ".message-inline-editor", ".message-inline-submit");
         assertThat(app).contains("!event.shiftKey", "!event.isComposing", "event.keyCode !== 229",
                 "messageElement.classList.add('editing')");
-        assertThat(css).contains(".message.user.editing", "background: linear-gradient(145deg");
+        assertThat(css).contains(
+                ".message.user.editing",
+                "background: linear-gradient(145deg",
+                ".message-content.inline-editing:focus-within",
+                "resize: none",
+                "border: 0",
+                "background: transparent");
+        assertThat(css).doesNotContain("box-shadow: inset 0 0 0 1px #88c3dc");
     }
 
     private static String read(String relativePath) throws IOException {
